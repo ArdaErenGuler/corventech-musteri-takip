@@ -1,0 +1,23 @@
+{
+  "name": "Corventech Panel",
+  "short_name": "Corventech",
+  "description": "Corventech müşteri, hizmet ve ödeme takip paneli",
+  "lang": "tr",
+  "dir": "ltr",
+  "start_url": "./dashboard.php",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0b17",
+  "theme_color": "#0d0b17",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Yeni müşteri", "url": "./musteri-form.php", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Yenilemeler", "url": "./yenilemeler.php", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ödeme al", "url": "./odeme-form.php", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
