@@ -163,6 +163,11 @@ function input_date(string $key): ?string
     return $d && $d->format('Y-m-d') === $v ? $v : null;
 }
 
+function field_error(array $errors, string $key): string
+{
+    return isset($errors[$key]) ? '<span class="error-text">' . e($errors[$key]) . '</span>' : '';
+}
+
 /** Form tekrar gösterildiğinde eski değeri getirir */
 function old(string $key, $fallback = ''): string
 {
