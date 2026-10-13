@@ -320,7 +320,8 @@ a.item-title:hover { text-decoration: none; }
 /* Ödeme kartı: alt satırda eylemler */
 .due-card { flex-wrap: wrap; }
 .due-card .item-actions { width: 100%; justify-content: flex-end; padding-top: 4px; }
-@media (min-width: 720px) { .due-card { flex-wrap: nowrap; } .due-card .item-actions { width: auto; padding-top: 0; } }
+.list { container-type: inline-size; }
+@container (min-width: 620px) { .due-card { flex-wrap: nowrap; } .due-card .item-actions { width: auto; padding-top: 0; } }
 
 .avatar {
     width: 42px; height: 42px; flex: none; border-radius: 10px;
@@ -447,7 +448,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .chart-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; cursor: default; min-width: 0; }
 .chart-col .bar { width: 100%; max-width: 24px; background: var(--chart-bar); border-radius: 4px 4px 0 0; min-height: 0; }
 .chart-col.is-past .bar { background: var(--chart-bar-muted); }
-.chart-col .val { position: absolute; font-size: 0.72rem; font-weight: 700; color: var(--muted); white-space: nowrap; transform: translateY(-18px); }
+.chart-col .val { position: absolute; font-size: 0.72rem; font-weight: 700; color: var(--muted); white-space: nowrap; margin-bottom: 4px; }
 .chart-col:hover .bar, .chart-col:focus-visible .bar { filter: brightness(1.12); }
 .chart-labels { display: flex; gap: 4px; margin-top: 6px; }
 .chart-labels span { flex: 1; text-align: center; font-size: 0.72rem; color: var(--muted); min-width: 0; }

@@ -96,6 +96,18 @@ function redirect(string $url): void
     exit;
 }
 
+/** Formdan gelen "geri dön" adresini yalnızca bu uygulamanın bir sayfasıysa kabul eder */
+function safe_return(?string $url, string $default): string
+{
+    $path = basename((string) parse_url((string) $url, PHP_URL_PATH));
+    $query = (string) parse_url((string) $url, PHP_URL_QUERY);
+    $fragment = (string) parse_url((string) $url, PHP_URL_FRAGMENT);
+    if (!preg_match('/^[a-z\-]+\.php$/', $path)) {
+        return $default;
+    }
+    return $path . ($query !== '' ? '?' . $query : '') . ($fragment !== '' ? '#' . $fragment : '');
+}
+
 function flash(string $type, string $message): void
 {
     $_SESSION['flash'][] = ['type' => $type, 'message' => $message];
@@ -151,17 +163,24 @@ function input_int(string $key): ?int
     return $v === '' || !ctype_digit($v) ? null : (int) $v;
 }
 
-/** "1.250,50" / "1250.50" / "1250" → 1250.5 */
-function input_money(string $key): ?float
+/** Türkçe tutar yazımını sayıya çevirir: "14.000" → 14000, "1.250,50" → 1250.5, "1250.5" → 1250.5 */
+function parse_money(string $v): ?float
 {
-    $v = str_replace([' ', '₺'], '', input($key));
+    $v = str_replace([' ', '₺', "\u{00A0}"], '', $v);
     if ($v === '') {
         return null;
     }
     if (str_contains($v, ',')) {
-        $v = str_replace(['.', ','], ['', '.'], $v);
+        $v = str_replace(['.', ','], ['', '.'], $v);      // virgül ondalık, nokta binlik
+    } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $v)) {
+        $v = str_replace('.', '', $v);                    // yalnızca binlik noktalar
     }
     return is_numeric($v) ? round((float) $v, 2) : null;
+}
+
+function input_money(string $key): ?float
+{
+    return parse_money(input($key));
 }
 
 /** YYYY-MM-DD doğrulaması; geçersizse null */

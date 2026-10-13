@@ -43,8 +43,7 @@ if (is_post()) {
             q('INSERT INTO payments (customer_id, due_id, amount, paid_at, method, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
             flash('success', money($amount) . ' ödeme kaydedildi.');
         }
-        $return = input('return');
-        redirect($return !== '' && preg_match('/^[a-z\-]+\.php(\?[^\s]*)?$/', $return) ? $return : 'musteri.php?id=' . $customerId . '#odemeler');
+        redirect(safe_return(input('return'), 'musteri.php?id=' . $customerId . '#odemeler'));
     }
 }
 
@@ -70,8 +69,11 @@ if (!$payment && !$presetDue && $dues && !is_post()) {
 }
 $val = fn($k) => e(old($k, $p[$k] ?? ''));
 $back = $selectedCustomer ? 'musteri.php?id=' . $selectedCustomer . '#odemeler' : 'odemeler.php';
-$return = input('return') ?: ($presetDue ? ($_SERVER['HTTP_REFERER'] ?? '') : '');
-$return = $return ? basename(parse_url($return, PHP_URL_PATH) ?? '') . (parse_url($return, PHP_URL_QUERY) ? '?' . parse_url($return, PHP_URL_QUERY) : '') : '';
+// Yenilemeler'den gelindiyse kayıttan sonra oraya dönülür
+$return = safe_return(input('return') ?: ($presetDue ? ($_SERVER['HTTP_REFERER'] ?? '') : ''), '');
+if ($return !== '' && str_starts_with($return, 'odeme-form.php')) {
+    $return = '';
+}
 
 layout_start($payment ? 'Ödemeyi düzenle' : 'Ödeme al', 'payments', ['back' => $back, 'fab' => false]);
 ?>
