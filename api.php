@@ -11,7 +11,7 @@ switch (input('action')) {
         $rows = q_all(DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.customer_id = ? ORDER BY d.due_date', [input_int('customer_id') ?? 0]);
         json_response(array_map(fn($d) => [
             'id'        => (int) $d['id'],
-            'remaining' => number_format((float) $d['remaining'], 2, '.', ''),
+            'remaining' => money_input($d['remaining']),
             'label'     => order_name($d) . ' · ' . due_label($d) . ' · ' . date_tr($d['due_date']) . ' · ' . money($d['remaining']),
         ], $rows));
 

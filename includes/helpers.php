@@ -16,6 +16,15 @@ function money($amount, bool $symbol = true): string
     return number_format($amount, $decimals, ',', '.') . ($symbol ? ' ₺' : '');
 }
 
+/** Form alanı için tutar: 6000.00 → "6000", 1250.50 → "1250.5" */
+function money_input($amount): string
+{
+    if ($amount === null || $amount === '') {
+        return '';
+    }
+    return rtrim(rtrim(number_format((float) $amount, 2, '.', ''), '0'), '.');
+}
+
 /** Milyon ve üstünü kısaltır (4.200.000 → "4,2 Mn ₺"), küsuratı atar; altı tam yazılır */
 function money_short($amount): string
 {

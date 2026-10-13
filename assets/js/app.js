@@ -117,7 +117,7 @@
         var setup = $('[name="setup_fee"]', orderForm);
         var start = $('[name="start_date"]', orderForm);
         var firstDue = $('[name="first_due_date"]', orderForm);
-        var cycles = $$('[name="billing_cycle"]', orderForm);
+        var cycles = $$('[name="billing_cycle"], [name="default_cycle"]', orderForm);
         var firstDueTouched = firstDue && firstDue.value !== '' && firstDue.value !== start.value;
 
         function cycleValue() {
