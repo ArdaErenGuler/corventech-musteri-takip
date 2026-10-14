@@ -205,7 +205,6 @@
     /* ---------- Sosyal medya takvimi: güne dokununca o günün listesi ---------- */
     var calendar = $('[data-calendar]');
     if (calendar) {
-        var fab = $('.fab');
         calendar.addEventListener('click', function (e) {
             var day = e.target.closest('[data-day]');
             if (!day) return;
@@ -217,7 +216,6 @@
             day.classList.add('is-selected');
             day.setAttribute('aria-current', 'date');
             $$('[data-agenda]').forEach(function (a) { a.hidden = a !== agenda; });
-            if (fab) fab.href = 'paylasim-form.php?tarih=' + key;
             var url = new URL(location.href);
             url.searchParams.set('gun', key);
             history.replaceState(null, '', url);
@@ -226,20 +224,6 @@
             }
         });
     }
-
-    /* ---------- Metni kopyala ---------- */
-    document.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-copy]');
-        if (!btn) return;
-        e.preventDefault();
-        var text = btn.getAttribute('data-copy');
-        var done = function () {
-            btn.classList.add('is-copied');
-            btn.setAttribute('title', 'Kopyalandı');
-            setTimeout(function () { btn.classList.remove('is-copied'); btn.setAttribute('title', 'Metni kopyala'); }, 1500);
-        };
-        if (navigator.clipboard) navigator.clipboard.writeText(text).then(done).catch(function () {});
-    });
 
     /* ---------- Paylaşım bildirimi ----------
      * Uygulama açıldığında, o gün paylaşılacak gönderi varsa günde bir kez sistem bildirimi gösterir.
@@ -265,7 +249,7 @@
                 var late = rows.length - today;
                 var title = today ? 'Bugün ' + today + ' paylaşım var' : late + ' paylaşım gecikti';
                 var body = rows.slice(0, 4).map(function (r) {
-                    return (r.time ? r.time + ' · ' : '') + (r.customer ? r.customer + ' – ' : '') + r.title + (r.late ? ' (gecikti)' : '');
+                    return (r.customer || r.title) + (r.late ? ' (gecikti)' : '');
                 }).join('\n');
                 navigator.serviceWorker.ready.then(function (reg) {
                     reg.showNotification(title, {

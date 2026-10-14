@@ -8,7 +8,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 
 - **Dashboard:** aktif müşteri, bu ay tahsilat, gecikmiş ödemeler, yaklaşan ödemeler, açık görevler
 - **Müşteriler:** Arda / Melih / Ortak ayrımı, arama, durum/sektör/borçlu filtresi, tek dokunuşla arama ve WhatsApp; detay sayfasında hizmetler, ödeme planı, ödeme geçmişi, kalan borç, görevler ve görüşme notları
-- **Sosyal medya takvimi:** aylık takvim; güne dokununca o günün paylaşımları, platform (Instagram, TikTok…), içerik türü, saat, paylaşım metni (tek dokunuşla kopyalanır), haftalık/aylık tekrar; paylaşım günü gelince panelde şerit + sistem bildirimi
+- **Sosyal medya takvimi:** aylık takvim; güne dokunup müşteri eklenir, paylaşınca işaretlenir; paylaşım günü gelince panelde şerit + bildirim
 - **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
 - **Ödemeler:** tahsilat kaydı; hangi dönem için alındığı ve kalan tutar otomatik gelir
 - **Yenilemeler:** gecikmiş, bugün, bu hafta ve sonraki 30 günün ödemeleri; WhatsApp hatırlatma mesajı; yıllık yenileme takvimi
