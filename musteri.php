@@ -58,6 +58,7 @@ layout_start($name, 'customers', [
             <div class="item-sub">
                 <?php if ($c['company_name'] && $c['contact_name']): ?><span><?= icon('user') ?><?= e($c['contact_name']) ?></span><?php endif; ?>
                 <?= customer_status_badge($c['status']) ?>
+                <?= owner_badge($c['owner']) ?>
             </div>
         </div>
     </div>

@@ -2,7 +2,7 @@
  * Statik dosyalar önbellekten (cache-first), sayfalar her zaman ağdan gelir.
  * Müşteri verisi içeren sayfalar önbelleğe alınmaz; bağlantı yoksa offline.html gösterilir.
  */
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const CACHE = 'ctpanel-' + VERSION;
 const PRECACHE = [
   'offline.html',
@@ -46,4 +46,21 @@ self.addEventListener('fetch', (event) => {
       }))
     );
   }
+});
+
+// Bildirime dokununca takvimi aç (açık bir pencere varsa ona geç)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || 'takvim.php', self.registration.scope).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
 });

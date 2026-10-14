@@ -15,6 +15,8 @@ $mrr = monthly_recurring_revenue();
 $dues = q_all(DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.due_date <= CURDATE() + INTERVAL ? DAY ORDER BY d.due_date LIMIT 6', [$window]);
 $tasks = q_all(TASKS_SELECT . " WHERE t.status <> 'done' ORDER BY t.due_date IS NULL, t.due_date, FIELD(t.priority, 'high', 'normal', 'low') LIMIT 5");
 $payments = q_all(PAYMENTS_SELECT . ' ORDER BY p.paid_at DESC, p.id DESC LIMIT 5');
+$postsToday = due_posts();
+$postsUpcoming = q_all(POSTS_SELECT . " WHERE p.status <> 'published' AND p.scheduled_date BETWEEN CURDATE() + INTERVAL 1 DAY AND CURDATE() + INTERVAL 3 DAY ORDER BY p.scheduled_date, p.scheduled_time IS NULL, p.scheduled_time LIMIT 4");
 $newCustomers = q_all('SELECT * FROM customers ORDER BY registered_at DESC, id DESC LIMIT 5');
 
 $firstName = explode(' ', $user['name'])[0];
@@ -57,6 +59,22 @@ layout_start('Dashboard', 'dashboard');
         <div class="stat-sub"><?= (int) $upcoming['n'] ?> ödeme bekleniyor</div>
     </a>
 </div>
+
+<section class="card posts-today mb">
+    <div class="card-head">
+        <h2><?= icon('calendar') ?> Bugün paylaşılacaklar</h2>
+        <a href="takvim.php">Takvim</a>
+    </div>
+    <?php if ($postsToday): ?>
+        <div class="list"><?php foreach ($postsToday as $p) echo post_item($p, $p['scheduled_date'] !== today()); ?></div>
+    <?php else: ?>
+        <p class="muted small mt-0">Bugün için bekleyen paylaşım yok.</p>
+    <?php endif; ?>
+    <?php if ($postsUpcoming): ?>
+        <div class="section-head" style="margin-top:16px"><h3>Önümüzdeki 3 gün</h3></div>
+        <div class="list"><?php foreach ($postsUpcoming as $p) echo post_item($p, true); ?></div>
+    <?php endif; ?>
+</section>
 
 <div class="grid-2">
     <section class="card">

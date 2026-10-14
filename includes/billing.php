@@ -36,6 +36,69 @@ const CUSTOMER_STATUS_LABELS = [
     'passive'   => 'Pasif',
 ];
 
+/** Müşterinin sorumlusu (müşteri listesinde filtre) */
+const OWNER_LABELS = [
+    'arda'  => 'Arda',
+    'melih' => 'Melih',
+    'ortak' => 'Ortak',
+];
+
+/**
+ * Yeni sipariş oluşturur ve ödeme planını üretir. Sipariş formu ve "yeni müşteri" formu kullanır.
+ * $o: customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, notes
+ */
+function create_order(array $o, int $userId): int
+{
+    q(
+        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        [$o['customer_id'], $o['service_id'] ?: null, $o['title'] ?: null, $o['billing_cycle'], $o['price'], $o['setup_fee'],
+         $o['start_date'], $o['first_due_date'], $o['end_date'] ?? null, $o['notes'] ?? null, $userId]
+    );
+    $id = (int) db()->lastInsertId();
+    sync_order_dues(q_one('SELECT * FROM orders WHERE id = ?', [$id]));
+    if (q_val('SELECT status FROM customers WHERE id = ?', [$o['customer_id']]) === 'potential') {
+        q("UPDATE customers SET status = 'active' WHERE id = ?", [$o['customer_id']]);
+    }
+    return $id;
+}
+
+/**
+ * Sipariş formu alanlarını doğrular ve normalleştirir (müşteri hariç).
+ * Dönen dizi: [$data, $errors]
+ */
+function validate_order_input(): array
+{
+    $errors = [];
+    $d = [
+        'service_id'     => input_int('service_id'),
+        'title'          => input('title'),
+        'billing_cycle'  => input('billing_cycle'),
+        'price'          => input_money('price'),
+        'setup_fee'      => input_money('setup_fee') ?? 0.0,
+        'start_date'     => input_date('start_date'),
+        'first_due_date' => input_date('first_due_date'),
+        'end_date'       => input_date('end_date'),
+        'notes'          => input('notes'),
+    ];
+    if ($d['service_id'] && !q_val('SELECT id FROM services WHERE id = ?', [$d['service_id']])) $errors['service_id'] = 'Geçersiz paket.';
+    if (!$d['service_id'] && $d['title'] === '') $errors['service_id'] = 'Paket seçin ya da hizmete bir ad yazın.';
+    if (!isset(CYCLE_LABELS[$d['billing_cycle']])) $errors['billing_cycle'] = 'Ödeme tipini seçin.';
+    if ($d['price'] === null || $d['price'] < 0) $errors['price'] = 'Tutarı yazın.';
+    if ($d['setup_fee'] < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
+    if (!$d['start_date']) $errors['start_date'] = 'Tarih seçin.';
+
+    if ($d['billing_cycle'] === 'one_time') {
+        $d['first_due_date'] = $d['start_date'];
+        $d['setup_fee'] = 0.0;
+        $d['end_date'] = null;
+    } else {
+        $d['first_due_date'] = $d['first_due_date'] ?: $d['start_date'];
+        if ($d['end_date'] && $d['first_due_date'] && $d['end_date'] < $d['first_due_date']) $errors['end_date'] = 'Bitiş tarihi ilk ödemeden önce olamaz.';
+    }
+    return [$d, $errors];
+}
+
 /** Ay ekler, ay sonuna taşarsa son güne sabitler (31 Ocak + 1 ay = 28/29 Şubat) */
 function add_months_clamped(string $date, int $months): string
 {

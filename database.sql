@@ -11,7 +11,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
+DROP TABLE IF EXISTS posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -51,6 +51,7 @@ CREATE TABLE customers (
     sector        VARCHAR(100) NULL,
     city          VARCHAR(60)  NULL,
     status        ENUM('active','potential','passive') NOT NULL DEFAULT 'active',
+    owner         ENUM('arda','melih','ortak') NOT NULL DEFAULT 'ortak',
     notes         TEXT NULL,
     registered_at DATE NOT NULL,
     created_by    INT UNSIGNED NULL,
@@ -58,6 +59,7 @@ CREATE TABLE customers (
     updated_at    DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_status (status),
     INDEX idx_city (city),
+    INDEX idx_owner (owner),
     CONSTRAINT fk_customers_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
@@ -72,15 +74,12 @@ CREATE TABLE customer_notes (
     CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
--- Hizmetler / paketler: varsayılan fiyat ve ödeme tipi sipariş formunu önceden doldurur
+-- Paket adları (fiyat tutulmaz; fiyat her müşteri için elle girilir)
 CREATE TABLE services (
     id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name              VARCHAR(120) NOT NULL,
     kind              ENUM('single','combo') NOT NULL DEFAULT 'single',
     description       TEXT NULL,
-    default_cycle     ENUM('one_time','monthly','yearly') NOT NULL DEFAULT 'monthly',
-    default_price     DECIMAL(12,2) NOT NULL DEFAULT 0,
-    default_setup_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
     is_active         TINYINT(1) NOT NULL DEFAULT 1,
     sort_order        INT NOT NULL DEFAULT 0,
     created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -166,6 +165,29 @@ CREATE TABLE tasks (
     CONSTRAINT fk_tasks_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
+-- Sosyal medya paylaşım takvimi
+CREATE TABLE posts (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id    INT UNSIGNED NULL,
+    title          VARCHAR(200) NOT NULL,
+    platforms      SET('instagram','facebook','tiktok','linkedin','youtube','x') NOT NULL DEFAULT 'instagram',
+    post_type      ENUM('post','reels','story','carousel','video') NOT NULL DEFAULT 'post',
+    scheduled_date DATE NOT NULL,
+    scheduled_time TIME NULL,
+    caption        TEXT NULL,
+    notes          TEXT NULL,
+    status         ENUM('planned','ready','published') NOT NULL DEFAULT 'planned',
+    assigned_to    INT UNSIGNED NULL,
+    created_by     INT UNSIGNED NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at   DATETIME NULL,
+    INDEX idx_date (scheduled_date),
+    INDEX idx_status (status),
+    CONSTRAINT fk_posts_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_posts_assignee FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_posts_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
 -- ---------------------------------------------------------------------
 -- Ayarlar
 -- ---------------------------------------------------------------------
@@ -176,31 +198,31 @@ INSERT INTO settings (`key`, `value`) VALUES
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------
--- Hizmetler (6 paket) — fiyatlar örnektir, panelden değiştirilebilir
+-- Paketler (6 adet) — fiyat yok, her müşteride elle girilir
 -- ---------------------------------------------------------------------
 
-INSERT INTO services (id, name, kind, description, default_cycle, default_price, default_setup_fee, sort_order) VALUES
-(1, 'Sosyal Medya', 'single', 'Instagram/Facebook hesap yönetimi, aylık içerik planı ve paylaşımlar.', 'monthly', 7500, 0, 1),
-(2, 'Kurumsal Web Sitesi', 'single', 'Kurumsal site tasarımı ve kurulumu; yıllık barındırma, alan adı ve bakım.', 'yearly', 4000, 20000, 2),
-(3, 'İşletme Paneli', 'single', 'İşletmeye özel yönetim paneli; aylık barındırma ve destek.', 'monthly', 2500, 10000, 3),
-(4, 'Web Sitesi + Sosyal Medya', 'combo', 'Kurumsal web sitesi ve sosyal medya yönetimi bir arada.', 'monthly', 10000, 12500, 4),
-(5, 'İşletme Paneli + Sosyal Medya', 'combo', 'İşletme paneli ve sosyal medya yönetimi bir arada.', 'monthly', 9000, 7500, 5),
-(6, 'Full Paket (Web + Panel + Sosyal Medya)', 'combo', 'Web sitesi, işletme paneli ve sosyal medya yönetimi tek pakette.', 'monthly', 14000, 15000, 6);
+INSERT INTO services (id, name, kind, description, sort_order) VALUES
+(1, 'Sosyal Medya', 'single', 'Hesap yönetimi, içerik planı ve paylaşımlar.', 1),
+(2, 'Kurumsal Web Sitesi', 'single', 'Site tasarımı, kurulum, barındırma ve bakım.', 2),
+(3, 'İşletme Paneli', 'single', 'İşletmeye özel yönetim paneli.', 3),
+(4, 'Web Sitesi + Sosyal Medya', 'combo', NULL, 4),
+(5, 'İşletme Paneli + Sosyal Medya', 'combo', NULL, 5),
+(6, 'Full Paket (Web + Panel + Sosyal Medya)', 'combo', NULL, 6);
 
 -- ---------------------------------------------------------------------
 -- Örnek müşteriler (kurgusal)
 -- ---------------------------------------------------------------------
 
-INSERT INTO customers (id, company_name, contact_name, phone, email, sector, city, status, notes, registered_at) VALUES
-(1, 'Lavanta Kafe', 'Elif Kaya', '0555 000 00 01', 'elif@example.com', 'Kafe & Restoran', 'İzmir', 'active', 'Hafta sonu paylaşımlarına ağırlık verilmesini istiyor.', CURDATE() - INTERVAL 160 DAY),
-(2, 'Yıldız Diş Kliniği', 'Dt. Murat Yıldız', '0555 000 00 02', 'murat@example.com', 'Sağlık', 'Ankara', 'active', NULL, CURDATE() - INTERVAL 210 DAY),
-(3, 'Akdeniz İnşaat', 'Hasan Demir', '0555 000 00 03', 'info@example.com', 'İnşaat', 'Antalya', 'active', 'Alan adı ve barındırma yıllık yenileniyor.', CURDATE() - INTERVAL 365 DAY),
-(4, 'Mavi Kuaför', 'Zeynep Arslan', '0555 000 00 04', NULL, 'Güzellik & Bakım', 'İstanbul', 'active', 'Ödemeleri genelde ay sonunda yapıyor.', CURDATE() - INTERVAL 80 DAY),
-(5, 'Demir Oto Servis', 'Ali Demir', '0555 000 00 05', 'ali@example.com', 'Otomotiv', 'Bursa', 'active', NULL, CURDATE() - INTERVAL 45 DAY),
-(6, 'Ege Emlak', 'Selin Aydın', '0555 000 00 06', 'selin@example.com', 'Emlak', 'İzmir', 'active', NULL, CURDATE() - INTERVAL 105 DAY),
-(7, 'Kuzey Lojistik', 'Burak Çelik', '0555 000 00 07', 'burak@example.com', 'Lojistik', 'İstanbul', 'active', NULL, CURDATE() - INTERVAL 25 DAY),
-(8, 'Atölye Pilates', 'Deniz Koç', '0555 000 00 08', NULL, 'Spor & Sağlık', 'Ankara', 'potential', 'Full paket için teklif bekliyor.', CURDATE() - INTERVAL 6 DAY),
-(9, 'Güneş Optik', 'Kemal Şahin', '0555 000 00 09', NULL, 'Perakende', 'Gaziantep', 'passive', 'Sosyal medya hizmetini sonlandırdı.', CURDATE() - INTERVAL 310 DAY);
+INSERT INTO customers (id, company_name, contact_name, phone, email, sector, city, status, owner, notes, registered_at) VALUES
+(1, 'Lavanta Kafe', 'Elif Kaya', '0555 000 00 01', 'elif@example.com', 'Kafe & Restoran', 'İzmir', 'active', 'arda', 'Hafta sonu paylaşımlarına ağırlık verilmesini istiyor.', CURDATE() - INTERVAL 160 DAY),
+(2, 'Yıldız Diş Kliniği', 'Dt. Murat Yıldız', '0555 000 00 02', 'murat@example.com', 'Sağlık', 'Ankara', 'active', 'melih', NULL, CURDATE() - INTERVAL 210 DAY),
+(3, 'Akdeniz İnşaat', 'Hasan Demir', '0555 000 00 03', 'info@example.com', 'İnşaat', 'Antalya', 'active', 'ortak', 'Alan adı ve barındırma yıllık yenileniyor.', CURDATE() - INTERVAL 365 DAY),
+(4, 'Mavi Kuaför', 'Zeynep Arslan', '0555 000 00 04', NULL, 'Güzellik & Bakım', 'İstanbul', 'active', 'arda', 'Ödemeleri genelde ay sonunda yapıyor.', CURDATE() - INTERVAL 80 DAY),
+(5, 'Demir Oto Servis', 'Ali Demir', '0555 000 00 05', 'ali@example.com', 'Otomotiv', 'Bursa', 'active', 'melih', NULL, CURDATE() - INTERVAL 45 DAY),
+(6, 'Ege Emlak', 'Selin Aydın', '0555 000 00 06', 'selin@example.com', 'Emlak', 'İzmir', 'active', 'ortak', NULL, CURDATE() - INTERVAL 105 DAY),
+(7, 'Kuzey Lojistik', 'Burak Çelik', '0555 000 00 07', 'burak@example.com', 'Lojistik', 'İstanbul', 'active', 'arda', NULL, CURDATE() - INTERVAL 25 DAY),
+(8, 'Atölye Pilates', 'Deniz Koç', '0555 000 00 08', NULL, 'Spor & Sağlık', 'Ankara', 'potential', 'melih', 'Full paket için teklif bekliyor.', CURDATE() - INTERVAL 6 DAY),
+(9, 'Güneş Optik', 'Kemal Şahin', '0555 000 00 09', NULL, 'Perakende', 'Gaziantep', 'passive', 'ortak', 'Sosyal medya hizmetini sonlandırdı.', CURDATE() - INTERVAL 310 DAY);
 
 -- ---------------------------------------------------------------------
 -- Örnek siparişler
@@ -273,3 +295,15 @@ INSERT INTO tasks (title, description, customer_id, due_date, priority, status, 
 INSERT INTO customer_notes (customer_id, body, created_at) VALUES
 (4, 'Arandı, ay sonunda iki ayı birlikte ödeyeceğini söyledi.', NOW() - INTERVAL 2 DAY),
 (8, 'Tanışma toplantısı yapıldı, stüdyo fotoğrafları gönderilecek.', NOW() - INTERVAL 5 DAY);
+
+INSERT INTO posts (customer_id, title, platforms, post_type, scheduled_date, scheduled_time, caption, status, published_at) VALUES
+(1, 'Hafta sonu kahvaltı menüsü', 'instagram,facebook', 'carousel', CURDATE(), '10:00', 'Hafta sonu kahvaltısı için yerinizi ayırtın! ☕', 'ready', NULL),
+(6, 'Yeni proje tanıtımı', 'instagram', 'reels', CURDATE(), '18:30', NULL, 'planned', NULL),
+(2, 'Diş beyazlatma kampanyası', 'instagram,facebook', 'post', CURDATE() + INTERVAL 1 DAY, '12:00', NULL, 'planned', NULL),
+(4, 'Saç bakım önerileri', 'instagram,tiktok', 'reels', CURDATE() + INTERVAL 2 DAY, '19:00', NULL, 'planned', NULL),
+(1, 'Günün tatlısı', 'instagram', 'story', CURDATE() + INTERVAL 4 DAY, NULL, NULL, 'planned', NULL),
+(6, 'Haftanın ilanları', 'instagram,facebook', 'carousel', CURDATE() + INTERVAL 6 DAY, '11:00', NULL, 'planned', NULL),
+(7, 'Firma tanıtım videosu', 'linkedin,youtube', 'video', CURDATE() + INTERVAL 9 DAY, '10:00', NULL, 'planned', NULL),
+(2, 'Hasta yorumu', 'instagram', 'post', CURDATE() - INTERVAL 1 DAY, '13:00', NULL, 'planned', NULL),
+(1, 'Yeni sezon menüsü', 'instagram,facebook', 'carousel', CURDATE() - INTERVAL 3 DAY, '10:00', NULL, 'published', NOW() - INTERVAL 3 DAY),
+(4, 'Öncesi / sonrası', 'instagram', 'reels', CURDATE() - INTERVAL 5 DAY, '18:00', NULL, 'published', NOW() - INTERVAL 5 DAY);

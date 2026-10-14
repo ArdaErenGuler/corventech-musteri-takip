@@ -15,6 +15,15 @@ switch (input('action')) {
             'label'     => order_name($d) . ' · ' . due_label($d) . ' · ' . date_tr($d['due_date']) . ' · ' . money($d['remaining']),
         ], $rows));
 
+    // Bildirim: bugün ve gecikmiş, paylaşılmamış gönderiler
+    case 'today_posts':
+        json_response(array_map(fn($p) => [
+            'title'    => $p['title'],
+            'customer' => $p['customer_name'],
+            'time'     => $p['scheduled_time'] ? substr($p['scheduled_time'], 0, 5) : null,
+            'late'     => $p['scheduled_date'] < today(),
+        ], due_posts()));
+
     default:
         json_response(['error' => 'Bilinmeyen işlem'], 400);
 }

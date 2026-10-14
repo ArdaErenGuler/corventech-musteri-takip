@@ -112,12 +112,9 @@
     /* ---------- Sipariş formu ---------- */
     var orderForm = $('[data-order-form]');
     if (orderForm) {
-        var service = $('[name="service_id"]', orderForm);
-        var price = $('[name="price"]', orderForm);
-        var setup = $('[name="setup_fee"]', orderForm);
         var start = $('[name="start_date"]', orderForm);
         var firstDue = $('[name="first_due_date"]', orderForm);
-        var cycles = $$('[name="billing_cycle"], [name="default_cycle"]', orderForm);
+        var cycles = $$('[name="billing_cycle"]', orderForm);
         var firstDueTouched = firstDue && firstDue.value !== '' && firstDue.value !== start.value;
 
         function cycleValue() {
@@ -133,16 +130,6 @@
         cycles.forEach(function (r) { r.addEventListener('change', syncCycle); });
         syncCycle();
 
-        if (service) {
-            service.addEventListener('change', function () {
-                var opt = service.options[service.selectedIndex];
-                if (!opt || !opt.dataset.price) return;
-                price.value = opt.dataset.price;
-                if (setup) setup.value = opt.dataset.setup || '0';
-                cycles.forEach(function (r) { r.checked = r.value === opt.dataset.cycle; });
-                syncCycle();
-            });
-        }
         if (firstDue && start) {
             firstDue.addEventListener('input', function () { firstDueTouched = true; });
             start.addEventListener('change', function () { if (!firstDueTouched) firstDue.value = start.value; });
@@ -214,6 +201,100 @@
             col.addEventListener('touchstart', show, { passive: true });
         });
     });
+
+    /* ---------- Sosyal medya takvimi: güne dokununca o günün listesi ---------- */
+    var calendar = $('[data-calendar]');
+    if (calendar) {
+        var fab = $('.fab');
+        calendar.addEventListener('click', function (e) {
+            var day = e.target.closest('[data-day]');
+            if (!day) return;
+            var key = day.getAttribute('data-day');
+            var agenda = $('[data-agenda="' + key + '"]');
+            if (!agenda || day.classList.contains('is-out')) return;   // başka ayın günü: sayfa o aya geçsin
+            e.preventDefault();
+            $$('.cal-day.is-selected', calendar).forEach(function (d) { d.classList.remove('is-selected'); d.removeAttribute('aria-current'); });
+            day.classList.add('is-selected');
+            day.setAttribute('aria-current', 'date');
+            $$('[data-agenda]').forEach(function (a) { a.hidden = a !== agenda; });
+            if (fab) fab.href = 'paylasim-form.php?tarih=' + key;
+            var url = new URL(location.href);
+            url.searchParams.set('gun', key);
+            history.replaceState(null, '', url);
+            if (window.matchMedia('(max-width: 1023px)').matches) {
+                agenda.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+
+    /* ---------- Metni kopyala ---------- */
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-copy]');
+        if (!btn) return;
+        e.preventDefault();
+        var text = btn.getAttribute('data-copy');
+        var done = function () {
+            btn.classList.add('is-copied');
+            btn.setAttribute('title', 'Kopyalandı');
+            setTimeout(function () { btn.classList.remove('is-copied'); btn.setAttribute('title', 'Metni kopyala'); }, 1500);
+        };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(done).catch(function () {});
+    });
+
+    /* ---------- Paylaşım bildirimi ----------
+     * Uygulama açıldığında, o gün paylaşılacak gönderi varsa günde bir kez sistem bildirimi gösterir.
+     * (Uygulama tamamen kapalıyken bildirim için sunucu taraflı Web Push gerekir.)
+     */
+    var now = new Date();
+    var notifyKey = 'posts-notified-' + now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+    function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+    function notifyTodayPosts(force) {
+        if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+        if (!force && storageGet(notifyKey)) return;
+        fetch('api.php?action=today_posts', { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (rows) {
+                storageSet(notifyKey, '1');
+                if (!rows.length) {
+                    if (force) navigator.serviceWorker.ready.then(function (reg) { reg.showNotification('Bildirimler açık', { body: 'Paylaşım günü geldiğinde haber vereceğiz.', icon: 'assets/icons/icon-192.png' }); });
+                    return;
+                }
+                var today = rows.filter(function (r) { return !r.late; }).length;
+                var late = rows.length - today;
+                var title = today ? 'Bugün ' + today + ' paylaşım var' : late + ' paylaşım gecikti';
+                var body = rows.slice(0, 4).map(function (r) {
+                    return (r.time ? r.time + ' · ' : '') + (r.customer ? r.customer + ' – ' : '') + r.title + (r.late ? ' (gecikti)' : '');
+                }).join('\n');
+                navigator.serviceWorker.ready.then(function (reg) {
+                    reg.showNotification(title, {
+                        body: body,
+                        icon: 'assets/icons/icon-192.png',
+                        badge: 'assets/icons/icon-192.png',
+                        tag: 'posts-today',
+                        data: { url: 'takvim.php' }
+                    });
+                });
+            })
+            .catch(function () {});
+    }
+
+    var notifyBtns = $$('[data-enable-notifications]');
+    if ('Notification' in window && Notification.permission === 'default') {
+        notifyBtns.forEach(function (b) { b.hidden = false; });
+    }
+    notifyBtns.forEach(function (b) {
+        b.addEventListener('click', function () {
+            Notification.requestPermission().then(function (perm) {
+                if (perm === 'granted') {
+                    notifyBtns.forEach(function (x) { x.hidden = true; });
+                    notifyTodayPosts(true);
+                }
+            });
+        });
+    });
+    if (drawer) notifyTodayPosts(false);   // yalnızca giriş yapılmış sayfalarda
 
     /* ---------- PWA ---------- */
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {

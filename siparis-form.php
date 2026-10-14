@@ -38,43 +38,21 @@ if (is_post()) {
     }
 
     $customerId = input_int('customer_id');
-    $serviceId = input_int('service_id');
-    $cycle = input('billing_cycle');
-    $price = input_money('price');
-    $setup = input_money('setup_fee') ?? 0.0;
-    $start = input_date('start_date');
-    $firstDue = input_date('first_due_date');
-    $end = input_date('end_date');
     $status = $order ? input('status') : 'active';
-
+    [$d, $errors] = validate_order_input();
     if (!$customerId || !q_val('SELECT id FROM customers WHERE id = ?', [$customerId])) $errors['customer_id'] = 'Müşteri seçin.';
-    if ($serviceId && !q_val('SELECT id FROM services WHERE id = ?', [$serviceId])) $errors['service_id'] = 'Geçersiz paket.';
-    if (!$serviceId && input('title') === '') $errors['service_id'] = 'Paket seçin ya da hizmete bir ad yazın.';
-    if (!isset(CYCLE_LABELS[$cycle])) $errors['billing_cycle'] = 'Ödeme tipini seçin.';
-    if ($price === null || $price < 0) $errors['price'] = 'Geçerli bir tutar yazın.';
-    if ($setup < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
-    if (!$start) $errors['start_date'] = 'Tarih seçin.';
     if (!isset(ORDER_STATUS_LABELS[$status])) $errors['status'] = 'Durum seçin.';
 
-    if ($cycle === 'one_time') {
-        $firstDue = $start;
-        $setup = 0.0;
-        $end = null;
-    } else {
-        $firstDue = $firstDue ?: $start;
-        if ($end && $firstDue && $end < $firstDue) $errors['end_date'] = 'Bitiş tarihi ilk ödemeden önce olamaz.';
-    }
-
     if (!$errors) {
-        $syncFrom = $order['sync_from'] ?? null;
-        $wasActive = $order && $order['status'] === 'active';
-        if ($order && !$wasActive && $status === 'active') {
-            $syncFrom = today();   // Devam ettirilen sipariş: aradaki dönemler borç yazılmaz
-        }
-        $values = [$customerId, $serviceId, input('title') ?: null, $cycle, $price, $setup, $start, $firstDue, $end, $syncFrom, $status, input('notes') ?: null];
-
         if ($order) {
-            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, setup_fee = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [...$values, $id]);
+            $syncFrom = $order['sync_from'];
+            if ($order['status'] !== 'active' && $status === 'active') {
+                $syncFrom = today();   // Devam ettirilen sipariş: aradaki dönemler borç yazılmaz
+            }
+            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, setup_fee = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [
+                $customerId, $d['service_id'], $d['title'] ?: null, $d['billing_cycle'], $d['price'], $d['setup_fee'],
+                $d['start_date'], $d['first_due_date'], $d['end_date'], $syncFrom, $status, $d['notes'] ?: null, $id,
+            ]);
             if ($customerId !== (int) $order['customer_id']) {
                 q('UPDATE dues SET customer_id = ? WHERE order_id = ?', [$customerId, $id]);
                 q('UPDATE payments p JOIN dues d ON d.id = p.due_id SET p.customer_id = ? WHERE d.order_id = ?', [$customerId, $id]);
@@ -86,13 +64,7 @@ if (is_post()) {
             }
             flash('success', 'Sipariş güncellendi; ödeme planı yeniden hesaplandı.');
         } else {
-            q('INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, sync_from, status, notes, created_by)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
-            $id = (int) db()->lastInsertId();
-            sync_order_dues(q_one('SELECT * FROM orders WHERE id = ?', [$id]));
-            if (q_val('SELECT status FROM customers WHERE id = ?', [$customerId]) === 'potential') {
-                q("UPDATE customers SET status = 'active' WHERE id = ?", [$customerId]);
-            }
+            $id = create_order(['customer_id' => $customerId] + $d, (int) $user['id']);
             flash('success', 'Hizmet eklendi ve ödeme planı oluşturuldu.');
         }
         redirect('siparis-form.php?id=' . $id . '#plan');
@@ -130,58 +102,7 @@ layout_start($order ? 'Sipariş' : 'Hizmet ekle', 'orders', ['back' => $back, 'f
             </select>
             <?= field_error($errors, 'customer_id') ?>
         </div>
-        <div class="field<?= isset($errors['service_id']) ? ' has-error' : '' ?>">
-            <label for="service_id">Paket</label>
-            <select id="service_id" name="service_id">
-                <option value="">Özel hizmet (paketsiz)</option>
-                <?php foreach ($services as $s): ?>
-                    <option value="<?= (int) $s['id'] ?>" data-price="<?= e(money_input($s['default_price'])) ?>" data-setup="<?= e(money_input($s['default_setup_fee'])) ?>" data-cycle="<?= e($s['default_cycle']) ?>"<?= (int) old('service_id', $o['service_id'] ?? '') === (int) $s['id'] ? ' selected' : '' ?>>
-                        <?= e($s['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <?= field_error($errors, 'service_id') ?>
-        </div>
-        <div class="field">
-            <label for="title">Hizmet adı <span class="dim">(opsiyonel)</span></label>
-            <input id="title" name="title" value="<?= $val('title') ?>" placeholder="Boşsa paket adı kullanılır">
-        </div>
-        <fieldset class="field span-2<?= isset($errors['billing_cycle']) ? ' has-error' : '' ?>">
-            <legend class="label">Ödeme tipi</legend>
-            <div class="segmented">
-                <?php foreach (CYCLE_LABELS as $k => $label): ?>
-                    <label><input type="radio" name="billing_cycle" value="<?= $k ?>"<?= old('billing_cycle', $o['billing_cycle']) === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
-                <?php endforeach; ?>
-            </div>
-            <?= field_error($errors, 'billing_cycle') ?>
-        </fieldset>
-        <div class="field<?= isset($errors['price']) ? ' has-error' : '' ?>">
-            <label for="price" data-price-label>Aylık tutar</label>
-            <div class="input-money"><input id="price" name="price" inputmode="decimal" value="<?= e(old('price', money_input($o['price'] ?? ''))) ?>" required></div>
-            <?= field_error($errors, 'price') ?>
-        </div>
-        <div class="field<?= isset($errors['setup_fee']) ? ' has-error' : '' ?>" data-recurring-only>
-            <label for="setup_fee">Kurulum ücreti</label>
-            <div class="input-money"><input id="setup_fee" name="setup_fee" inputmode="decimal" value="<?= e(old('setup_fee', money_input($o['setup_fee'] ?? ''))) ?>"></div>
-            <span class="hint">Başlangıç tarihinde bir kez alınır (yoksa 0).</span>
-            <?= field_error($errors, 'setup_fee') ?>
-        </div>
-        <div class="field<?= isset($errors['start_date']) ? ' has-error' : '' ?>">
-            <label for="start_date">Başlangıç tarihi</label>
-            <input id="start_date" name="start_date" type="date" value="<?= $val('start_date') ?>" required>
-            <?= field_error($errors, 'start_date') ?>
-        </div>
-        <div class="field" data-recurring-only>
-            <label for="first_due_date">İlk ödeme tarihi</label>
-            <input id="first_due_date" name="first_due_date" type="date" value="<?= $val('first_due_date') ?>">
-            <span class="hint">Sonraki ödemeler bu tarihten itibaren her ay / her yıl aynı güne yazılır.</span>
-        </div>
-        <div class="field<?= isset($errors['end_date']) ? ' has-error' : '' ?>" data-recurring-only>
-            <label for="end_date">Bitiş tarihi <span class="dim">(opsiyonel)</span></label>
-            <input id="end_date" name="end_date" type="date" value="<?= $val('end_date') ?>">
-            <span class="hint">Sözleşme belli bir tarihte bitiyorsa.</span>
-            <?= field_error($errors, 'end_date') ?>
-        </div>
+        <?php require __DIR__ . '/includes/order-fields.php'; ?>
         <?php if ($order): ?>
             <div class="field">
                 <label for="status">Durum</label>

@@ -31,6 +31,7 @@ if (is_post()) {
         'sector'        => input('sector'),
         'city'          => input('city'),
         'status'        => input('status'),
+        'owner'         => input('owner'),
         'notes'         => input('notes'),
         'registered_at' => input_date('registered_at'),
     ];
@@ -47,29 +48,47 @@ if (is_post()) {
     if (!isset(CUSTOMER_STATUS_LABELS[$data['status']])) {
         $errors['status'] = 'Durum seçin.';
     }
+    if (!isset(OWNER_LABELS[$data['owner']])) {
+        $errors['owner'] = 'Müşterinin kime ait olduğunu seçin.';
+    }
     if (!$data['registered_at']) {
         $errors['registered_at'] = 'Geçerli bir tarih seçin.';
+    }
+
+    // Yeni müşteriyle birlikte ilk hizmet (paket veya tutar girildiyse)
+    $withOrder = !$customer && (input('service_id') !== '' || input('title') !== '' || input('price') !== '');
+    $order = null;
+    if ($withOrder) {
+        [$order, $orderErrors] = validate_order_input();
+        $errors += $orderErrors;
     }
 
     if (!$errors) {
         $nullable = fn($v) => $v === '' ? null : $v;
         $values = [
             $nullable($data['company_name']), $data['contact_name'], $nullable($data['phone']), $nullable($data['email']),
-            $nullable($data['sector']), $nullable($data['city']), $data['status'], $nullable($data['notes']), $data['registered_at'],
+            $nullable($data['sector']), $nullable($data['city']), $data['status'], $data['owner'], $nullable($data['notes']), $data['registered_at'],
         ];
         if ($customer) {
-            q('UPDATE customers SET company_name = ?, contact_name = ?, phone = ?, email = ?, sector = ?, city = ?, status = ?, notes = ?, registered_at = ? WHERE id = ?', [...$values, $id]);
+            q('UPDATE customers SET company_name = ?, contact_name = ?, phone = ?, email = ?, sector = ?, city = ?, status = ?, owner = ?, notes = ?, registered_at = ? WHERE id = ?', [...$values, $id]);
             flash('success', 'Müşteri bilgileri güncellendi.');
         } else {
-            q('INSERT INTO customers (company_name, contact_name, phone, email, sector, city, status, notes, registered_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
+            q('INSERT INTO customers (company_name, contact_name, phone, email, sector, city, status, owner, notes, registered_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
             $id = (int) db()->lastInsertId();
-            flash('success', 'Müşteri eklendi.');
+            if ($order) {
+                create_order(['customer_id' => $id, 'notes' => null] + $order, (int) $user['id']);
+                flash('success', 'Müşteri ve hizmeti eklendi; ödeme planı oluşturuldu.');
+            } else {
+                flash('success', 'Müşteri eklendi.');
+            }
         }
         redirect('musteri.php?id=' . $id);
     }
 }
 
-$c = $customer ?? ['status' => 'active', 'registered_at' => today()];
+$c = $customer ?? ['status' => 'active', 'owner' => 'ortak', 'registered_at' => today()];
+$o = ['billing_cycle' => 'monthly', 'start_date' => today(), 'first_due_date' => today()];
+$services = q_all('SELECT id, name FROM services WHERE is_active = 1 ORDER BY kind, sort_order, name');
 $val = fn($k) => e(old($k, $c[$k] ?? ''));
 $sectors = q("SELECT DISTINCT sector FROM customers WHERE sector IS NOT NULL AND sector <> '' ORDER BY sector")->fetchAll(PDO::FETCH_COLUMN);
 $cities = q("SELECT DISTINCT city FROM customers WHERE city IS NOT NULL AND city <> '' ORDER BY city")->fetchAll(PDO::FETCH_COLUMN);
@@ -80,7 +99,8 @@ layout_start($customer ? 'Müşteriyi düzenle' : 'Yeni müşteri', 'customers',
     'fab'  => false,
 ]);
 ?>
-<form method="post" class="card form" novalidate>
+<form method="post" class="form" data-order-form novalidate>
+    <div class="card">
     <?= csrf_field() ?>
     <div class="form-grid">
         <div class="field">
@@ -112,6 +132,15 @@ layout_start($customer ? 'Müşteriyi düzenle' : 'Yeni müşteri', 'customers',
             <input id="city" name="city" list="city-list" value="<?= $val('city') ?>">
             <datalist id="city-list"><?php foreach ($cities as $s): ?><option value="<?= e($s) ?>"><?php endforeach; ?></datalist>
         </div>
+        <fieldset class="field span-2<?= isset($errors['owner']) ? ' has-error' : '' ?>">
+            <legend class="label">Kimin müşterisi?</legend>
+            <div class="segmented">
+                <?php foreach (OWNER_LABELS as $k => $label): ?>
+                    <label><input type="radio" name="owner" value="<?= $k ?>"<?= old('owner', $c['owner']) === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
+                <?php endforeach; ?>
+            </div>
+            <?= field_error($errors, 'owner') ?>
+        </fieldset>
         <fieldset class="field<?= isset($errors['status']) ? ' has-error' : '' ?>">
             <legend class="label">Durum</legend>
             <div class="segmented">
@@ -131,6 +160,21 @@ layout_start($customer ? 'Müşteriyi düzenle' : 'Yeni müşteri', 'customers',
             <textarea id="notes" name="notes" rows="4" placeholder="Müşteriyle ilgili genel bilgiler"><?= $val('notes') ?></textarea>
         </div>
     </div>
+    </div>
+
+    <?php if (!$customer): ?>
+        <section class="card">
+            <div class="card-head">
+                <h2>Hizmet ve fiyat</h2>
+                <span class="muted small">Opsiyonel</span>
+            </div>
+            <p class="muted small">Müşterinin aldığı hizmeti ve anlaştığınız tutarı yazın; ödeme tarihleri buna göre takip edilir. Sonradan da ekleyebilirsiniz.</p>
+            <div class="form-grid">
+                <?php require __DIR__ . '/includes/order-fields.php'; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <div class="form-actions">
         <?php if ($customer): ?>
             <button class="btn danger" type="submit" name="action" value="delete" formnovalidate data-confirm="Bu müşteri ve tüm hizmet kayıtları silinecek. Emin misiniz?"><?= icon('trash') ?>Sil</button>

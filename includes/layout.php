@@ -7,7 +7,7 @@
 const NAV_ITEMS = [
     'dashboard'  => ['dashboard.php', 'Dashboard', 'grid'],
     'customers'  => ['musteriler.php', 'Müşteriler', 'users'],
-    'services'   => ['hizmetler.php', 'Hizmetler / Paketler', 'package'],
+    'calendar'   => ['takvim.php', 'Sosyal Medya Takvimi', 'calendar'],
     'orders'     => ['siparisler.php', 'Siparişler', 'bag'],
     'payments'   => ['odemeler.php', 'Ödemeler', 'wallet'],
     'renewals'   => ['yenilemeler.php', 'Yenilemeler', 'refresh'],
@@ -80,7 +80,9 @@ function layout_start(string $title, string $active, array $opts = []): void
     head_tags($title);
     $soon = (int) q_val('SELECT COUNT(*) FROM (' . DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.due_date <= CURDATE() + INTERVAL 7 DAY) x');
     $openTasks = (int) q_val("SELECT COUNT(*) FROM tasks WHERE status <> 'done' AND (assigned_to = ? OR assigned_to IS NULL)", [$user['id']]);
-    $badges = ['renewals' => $soon, 'tasks' => $openTasks];
+    $duePosts = $active === 'calendar' || $active === 'dashboard' ? [] : due_posts();
+    $postCount = (int) q_val("SELECT COUNT(*) FROM posts WHERE status <> 'published' AND scheduled_date <= CURDATE()");
+    $badges = ['renewals' => $soon, 'tasks' => $openTasks, 'calendar' => $postCount];
     ?>
 <body>
 <?php require __DIR__ . '/icons.php'; ?>
@@ -95,7 +97,7 @@ function layout_start(string $title, string $active, array $opts = []): void
             <?php foreach (NAV_ITEMS as $key => [$href, $label, $ic]): ?>
                 <a href="<?= $href ?>" class="nav-link<?= $key === $active ? ' is-active' : '' ?>"<?= $key === $active ? ' aria-current="page"' : '' ?>>
                     <?= icon($ic) ?><span><?= e($label) ?></span>
-                    <?php if (!empty($badges[$key])): ?><b class="nav-badge<?= $key === 'renewals' ? ' is-alert' : '' ?>"><?= $badges[$key] ?></b><?php endif; ?>
+                    <?php if (!empty($badges[$key])): ?><b class="nav-badge<?= in_array($key, ['renewals', 'calendar'], true) ? ' is-alert' : '' ?>"><?= $badges[$key] ?></b><?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </nav>
@@ -128,6 +130,19 @@ function layout_start(string $title, string $active, array $opts = []): void
             </div>
         </header>
         <main class="content" id="main">
+            <?php if ($duePosts):
+                $todayCount = count(array_filter($duePosts, fn($p) => $p['scheduled_date'] === today()));
+                $lateCount = count($duePosts) - $todayCount;
+                $names = array_unique(array_filter(array_map(fn($p) => $p['customer_name'] ?: $p['title'], $duePosts))); ?>
+                <a class="today-banner" href="takvim.php?gun=<?= today() ?>" data-banner="<?= today() ?>">
+                    <span class="today-banner-icon"><?= icon('calendar') ?></span>
+                    <span class="today-banner-text">
+                        <b><?= $todayCount ? "Bugün $todayCount paylaşım var" : '' ?><?= $todayCount && $lateCount ? ' · ' : '' ?><?= $lateCount ? "$lateCount paylaşım gecikti" : '' ?></b>
+                        <small><?= e(implode(', ', array_slice($names, 0, 3)) . (count($names) > 3 ? '…' : '')) ?></small>
+                    </span>
+                    <?= icon('chevron-right') ?>
+                </a>
+            <?php endif; ?>
             <?php foreach (take_flashes() as $f): ?>
                 <div class="flash flash-<?= e($f['type']) ?>" role="status"><?= icon($f['type'] === 'error' ? 'alert' : 'check') ?><span><?= e($f['message']) ?></span></div>
             <?php endforeach; ?>
@@ -177,6 +192,11 @@ function customer_status_badge(string $status): string
 {
     $tone = ['active' => 'good', 'potential' => 'accent', 'passive' => 'neutral'][$status] ?? 'neutral';
     return badge(CUSTOMER_STATUS_LABELS[$status] ?? $status, $tone);
+}
+
+function owner_badge(?string $owner): string
+{
+    return isset(OWNER_LABELS[$owner]) ? badge(OWNER_LABELS[$owner], 'neutral', 'user') : '';
 }
 
 function order_status_badge(string $status): string
