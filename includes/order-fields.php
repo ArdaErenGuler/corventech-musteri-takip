@@ -40,6 +40,25 @@ $ov = fn($k) => e(old($k, $o[$k] ?? ''));
     <span class="hint">Başlangıç tarihinde bir kez alınır.</span>
     <?= field_error($errors, 'setup_fee') ?>
 </div>
+<fieldset class="field span-2<?= isset($errors['split']) ? ' has-error' : '' ?>" data-split>
+    <legend class="label">Para kime gidecek?</legend>
+    <?php $split = old('split', $o['split'] ?? 'ortak'); ?>
+    <div class="segmented split-options">
+        <?php foreach (SHARE_PRESETS as $k => [$label, $p]): ?>
+            <label><input type="radio" name="split" value="<?= $k ?>"<?= $split === $k ? ' checked' : '' ?>><span><?= e($label) ?><small><?= e(share_text(['share_arda' => $p[0], 'share_melih' => $p[1], 'share_company' => $p[2]])) ?></small></span></label>
+        <?php endforeach; ?>
+        <label><input type="radio" name="split" value="custom"<?= $split === 'custom' ? ' checked' : '' ?>><span>Özel<small>oranı yaz</small></span></label>
+    </div>
+    <div class="split-custom" data-split-custom<?= $split === 'custom' ? '' : ' hidden' ?>>
+        <?php foreach (['share_arda' => 'Arda', 'share_melih' => 'Melih', 'share_company' => 'Şirket'] as $k => $label): ?>
+            <label class="field"><span class="hint"><?= $label ?> %</span>
+                <input name="<?= $k ?>" inputmode="decimal" value="<?= e(old($k, isset($o[$k]) ? rtrim(rtrim(number_format((float) $o[$k], 2, '.', ''), '0'), '.') : '0')) ?>">
+            </label>
+        <?php endforeach; ?>
+    </div>
+    <span class="hint">Bu işin her ödemesi bu orana göre kasalara yazılır.</span>
+    <?= field_error($errors, 'split') ?>
+</fieldset>
 <div class="field<?= isset($errors['start_date']) ? ' has-error' : '' ?>">
     <label for="start_date">Başlangıç tarihi</label>
     <input id="start_date" name="start_date" type="date" value="<?= $ov('start_date') ?>">

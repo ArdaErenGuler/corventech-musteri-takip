@@ -36,6 +36,7 @@ function require_login(): array
         redirect('login.php');
     }
     sync_all_dues();
+    sync_recurring_transactions();
     return $user;
 }
 

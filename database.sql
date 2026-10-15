@@ -11,7 +11,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS transactions, posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
+DROP TABLE IF EXISTS transactions, recurring_transactions, posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -94,6 +94,9 @@ CREATE TABLE orders (
     billing_cycle  ENUM('one_time','monthly','yearly') NOT NULL,
     price          DECIMAL(12,2) NOT NULL,
     setup_fee      DECIMAL(12,2) NOT NULL DEFAULT 0,
+    share_arda     DECIMAL(7,4) NOT NULL DEFAULT 0   COMMENT 'Bu işin parasının Arda kasasına giden yüzdesi',
+    share_melih    DECIMAL(7,4) NOT NULL DEFAULT 0   COMMENT 'Melih kasasına giden yüzde',
+    share_company  DECIMAL(7,4) NOT NULL DEFAULT 100 COMMENT 'Şirket kasasına giden yüzde (toplam 100)',
     start_date     DATE NOT NULL,
     first_due_date DATE NOT NULL,
     end_date       DATE NULL,
@@ -188,17 +191,37 @@ CREATE TABLE posts (
     CONSTRAINT fk_posts_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
--- Şirket kasası hareketleri: hosting, domain, Claude gibi giderler ve müşteri dışı gelirler
+-- Düzenli gelir/giderler (hosting yıllık, Claude aylık…): panel her dönemin kaydını kendisi oluşturur
+CREATE TABLE recurring_transactions (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    type        ENUM('income','expense') NOT NULL,
+    wallet      ENUM('company','arda','melih') NOT NULL DEFAULT 'company',
+    category    VARCHAR(60) NOT NULL,
+    amount      DECIMAL(12,2) NOT NULL,
+    cycle       ENUM('monthly','yearly') NOT NULL,
+    start_date  DATE NOT NULL,
+    last_period INT NOT NULL DEFAULT 0 COMMENT 'Oluşturulan son dönem numarası',
+    description VARCHAR(255) NULL,
+    is_active   TINYINT(1) NOT NULL DEFAULT 1,
+    created_by  INT UNSIGNED NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rtx_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
+-- Gelir/gider hareketleri (tek seferlik veya düzenli kayıttan üretilmiş)
 CREATE TABLE transactions (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type        ENUM('income','expense') NOT NULL,
+    wallet      ENUM('company','arda','melih') NOT NULL DEFAULT 'company' COMMENT 'Gider hangi kasadan ödendi / gelir hangi kasaya girdi',
     category    VARCHAR(60) NOT NULL,
     amount      DECIMAL(12,2) NOT NULL,
     txn_date    DATE NOT NULL,
     description VARCHAR(255) NULL,
+    recurring_id INT UNSIGNED NULL,
     created_by  INT UNSIGNED NULL,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_date (txn_date),
+    CONSTRAINT fk_txn_recurring FOREIGN KEY (recurring_id) REFERENCES recurring_transactions(id) ON DELETE SET NULL,
     CONSTRAINT fk_txn_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
@@ -209,7 +232,6 @@ CREATE TABLE transactions (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
-('company_share', '1/3'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------
@@ -253,6 +275,12 @@ INSERT INTO orders (id, customer_id, service_id, title, billing_cycle, price, se
 (7, 7, 5, NULL, 'monthly', 9000, 0, CURDATE() - INTERVAL 20 DAY, CURDATE() - INTERVAL 20 DAY, NULL, 'active', NULL),
 (8, 9, 1, NULL, 'monthly', 5000, 0, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 120 DAY, 'cancelled', NULL),
 (9, 1, 2, 'Web sitesi tasarımı', 'one_time', 18000, 0, CURDATE() - INTERVAL 120 DAY, CURDATE() - INTERVAL 120 DAY, NULL, 'completed', NULL);
+
+-- İşlerin pay dağılımı: kişisel müşteride 2/3 sahibine 1/3 şirkete, ortak müşteride tamamı şirkete
+UPDATE orders o JOIN customers c ON c.id = o.customer_id
+SET o.share_arda    = IF(c.owner = 'arda', 66.6667, 0),
+    o.share_melih   = IF(c.owner = 'melih', 66.6667, 0),
+    o.share_company = IF(c.owner = 'ortak', 100, 33.3333);
 
 -- Kurulum ücretleri
 INSERT INTO dues (order_id, customer_id, period_no, due_date, amount)
@@ -323,11 +351,12 @@ INSERT INTO posts (customer_id, title, platforms, post_type, scheduled_date, sch
 (1, 'Yeni sezon menüsü', 'instagram,facebook', 'carousel', CURDATE() - INTERVAL 3 DAY, '10:00', NULL, 'published', NOW() - INTERVAL 3 DAY),
 (4, 'Öncesi / sonrası', 'instagram', 'reels', CURDATE() - INTERVAL 5 DAY, '18:00', NULL, 'published', NOW() - INTERVAL 5 DAY);
 
--- Örnek şirket gelir/giderleri
-INSERT INTO transactions (type, category, amount, txn_date, description) VALUES
-('expense', 'Hosting', 3600, CURDATE() - INTERVAL 70 DAY, 'Yıllık sunucu yenileme'),
-('expense', 'Claude / Yazılım', 3400, DATE_FORMAT(CURDATE(), '%Y-%m-01'), 'Claude aboneliği'),
-('expense', 'Claude / Yazılım', 3400, DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-01'), 'Claude aboneliği'),
-('expense', 'Domain', 450, CURDATE() - INTERVAL 12 DAY, 'corventech.tr yenileme'),
-('expense', 'Reklam', 1500, CURDATE() - INTERVAL 20 DAY, 'Instagram reklamı'),
-('income', 'Diğer gelir', 2000, CURDATE() - INTERVAL 8 DAY, 'Danışmanlık');
+-- Örnek gelir/giderler. Düzenli olanların (hosting yıllık, Claude aylık) kayıtlarını panel ilk açılışta oluşturur.
+INSERT INTO recurring_transactions (type, wallet, category, amount, cycle, start_date, description) VALUES
+('expense', 'company', 'Hosting', 3600, 'yearly', CURDATE() - INTERVAL 70 DAY, 'Sunucu yenileme'),
+('expense', 'arda', 'Claude / Yazılım', 3400, 'monthly', DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-01'), 'Claude aboneliği');
+
+INSERT INTO transactions (type, wallet, category, amount, txn_date, description) VALUES
+('expense', 'company', 'Domain', 450, CURDATE() - INTERVAL 12 DAY, 'corventech.tr yenileme'),
+('expense', 'melih', 'Reklam', 1500, CURDATE() - INTERVAL 20 DAY, 'Instagram reklamı'),
+('income', 'company', 'Diğer gelir', 2000, CURDATE() - INTERVAL 8 DAY, 'Danışmanlık');

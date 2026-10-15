@@ -50,9 +50,10 @@ const OWNER_LABELS = [
 function create_order(array $o, int $userId): int
 {
     q(
-        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, setup_fee, share_arda, share_melih, share_company, start_date, first_due_date, end_date, status, notes, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
         [$o['customer_id'], $o['service_id'] ?: null, $o['title'] ?: null, $o['billing_cycle'], $o['price'], $o['setup_fee'],
+         $o['shares'][0], $o['shares'][1], $o['shares'][2],
          $o['start_date'], $o['first_due_date'], $o['end_date'] ?? null, $o['notes'] ?? null, $userId]
     );
     $id = (int) db()->lastInsertId();
@@ -87,6 +88,8 @@ function validate_order_input(): array
     if ($d['price'] === null || $d['price'] < 0) $errors['price'] = 'Tutarı yazın.';
     if ($d['setup_fee'] < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
     if (!$d['start_date']) $errors['start_date'] = 'Tarih seçin.';
+    [$d['shares'], $shareError] = validate_share_input();
+    if ($shareError) $errors['split'] = $shareError;
 
     if ($d['billing_cycle'] === 'one_time') {
         $d['first_due_date'] = $d['start_date'];
