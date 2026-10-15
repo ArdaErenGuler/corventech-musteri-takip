@@ -86,7 +86,9 @@ if (is_post()) {
     }
 }
 
-$c = $customer ?? ['status' => 'active', 'owner' => 'ortak', 'registered_at' => today()];
+// Yeni müşteride sahip, giriş yapan kişinin adına göre seçili gelir (Arda → Arda, Melih → Melih)
+$myOwner = mb_strtolower(explode(' ', trim($user['name']))[0]);
+$c = $customer ?? ['status' => 'active', 'owner' => isset(OWNER_LABELS[$myOwner]) && $myOwner !== 'ortak' ? $myOwner : 'ortak', 'registered_at' => today()];
 $o = ['billing_cycle' => 'monthly', 'start_date' => today(), 'first_due_date' => today(), 'split' => share_preset_for_owner($c['owner'])];
 $services = q_all('SELECT id, name FROM services WHERE is_active = 1 ORDER BY kind, sort_order, name');
 $val = fn($k) => e(old($k, $c[$k] ?? ''));

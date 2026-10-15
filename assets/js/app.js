@@ -85,6 +85,17 @@
         }, 4500);
     });
 
+    // "Bugün paylaşım var" şeridi: o gün için gizle
+    $$('[data-banner-close]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var banner = b.closest('[data-banner]');
+            try { localStorage.setItem('banner-hidden', banner.getAttribute('data-banner')); } catch (err) {}
+            banner.hidden = true;
+        });
+    });
+
     $$('select[data-autosubmit]').forEach(function (s) {
         s.addEventListener('change', function () { s.form.submit(); });
     });
@@ -105,8 +116,12 @@
         buttons.forEach(function (b) {
             b.addEventListener('click', function () { show(b.getAttribute('data-tab'), true); });
         });
-        var hash = location.hash.slice(1);
-        if (hash && buttons.some(function (b) { return b.getAttribute('data-tab') === hash; })) show(hash, false);
+        function fromHash() {
+            var hash = location.hash.slice(1);
+            if (hash && buttons.some(function (b) { return b.getAttribute('data-tab') === hash; })) show(hash, false);
+        }
+        fromHash();
+        window.addEventListener('hashchange', fromHash);
     });
 
     /* ---------- Sipariş formu ---------- */

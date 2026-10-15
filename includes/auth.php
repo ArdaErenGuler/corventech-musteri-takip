@@ -48,9 +48,23 @@ function require_admin(): void
     }
 }
 
+/**
+ * Ziyaretçinin IP'si. Vercel / Cloudflare gibi bir vekil sunucunun arkasında REMOTE_ADDR vekilin
+ * adresidir (herkes aynı görünür); bu yüzden bu ortamlarda vekilin eklediği başlık okunur.
+ * Başlıklar yalnızca config'te trust_proxy açıksa kullanılır (aksi halde sahtelenebilir).
+ */
 function client_ip(): string
 {
-    return substr($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', 0, 45);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    if (config('trust_proxy')) {
+        foreach (['HTTP_X_VERCEL_FORWARDED_FOR', 'HTTP_CF_CONNECTING_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR'] as $h) {
+            if (!empty($_SERVER[$h])) {
+                $ip = trim(explode(',', $_SERVER[$h])[0]);
+                break;
+            }
+        }
+    }
+    return substr($ip, 0, 45);
 }
 
 function login_locked(): bool

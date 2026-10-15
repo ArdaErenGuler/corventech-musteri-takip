@@ -135,14 +135,17 @@ function layout_start(string $title, string $active, array $opts = []): void
                 $todayCount = count(array_filter($duePosts, fn($p) => $p['scheduled_date'] === today()));
                 $lateCount = count($duePosts) - $todayCount;
                 $names = array_unique(array_filter(array_map(fn($p) => $p['customer_name'] ?: $p['title'], $duePosts))); ?>
-                <a class="today-banner" href="takvim.php?gun=<?= today() ?>" data-banner="<?= today() ?>">
+                <div class="today-banner" data-banner="<?= today() ?>">
+                <a class="today-banner-link" href="takvim.php?gun=<?= today() ?>">
                     <span class="today-banner-icon"><?= icon('calendar') ?></span>
                     <span class="today-banner-text">
                         <b><?= $todayCount ? "Bugün $todayCount paylaşım var" : '' ?><?= $todayCount && $lateCount ? ' · ' : '' ?><?= $lateCount ? "$lateCount paylaşım gecikti" : '' ?></b>
                         <small><?= e(implode(', ', array_slice($names, 0, 3)) . (count($names) > 3 ? '…' : '')) ?></small>
                     </span>
-                    <?= icon('chevron-right') ?>
                 </a>
+                <button class="today-banner-close" type="button" data-banner-close aria-label="Bugün için gizle"><?= icon('x') ?></button>
+                </div>
+                <script>try { if (localStorage.getItem('banner-hidden') === '<?= today() ?>') document.querySelector('[data-banner]').hidden = true; } catch (e) {}</script>
             <?php endif; ?>
             <?php foreach (take_flashes() as $f): ?>
                 <div class="flash flash-<?= e($f['type']) ?>" role="status"><?= icon($f['type'] === 'error' ? 'alert' : 'check') ?><span><?= e($f['message']) ?></span></div>
@@ -334,6 +337,7 @@ function payment_item(array $p, bool $showCustomer = true): string
             <span class="item-title"><?= e($showCustomer ? customer_display_name($p) : ($p['due_id'] ? order_name($p) : 'Genel ödeme')) ?></span>
             <div class="item-sub">
                 <span><?= date_tr($p['paid_at']) ?></span>
+                <?php if ($p['due_id'] && $p['billing_cycle']): ?><span><?= e(due_label($p)) ?></span><?php endif; ?>
                 <span><?= e(PAYMENT_METHODS[$p['method']] ?? '') ?></span>
                 <?php if ($showCustomer && $p['due_id']): ?><span><?= e(order_name($p)) ?></span><?php endif; ?>
                 <?php if ($p['note']): ?><span class="dim"><?= e($p['note']) ?></span><?php endif; ?>
@@ -345,7 +349,7 @@ function payment_item(array $p, bool $showCustomer = true): string
 }
 
 const PAYMENTS_SELECT = "
-    SELECT p.*, c.company_name, c.contact_name, o.title AS order_title, s.name AS service_name, d.period_no, d.due_date
+    SELECT p.*, c.company_name, c.contact_name, o.title AS order_title, o.billing_cycle, s.name AS service_name, d.period_no, d.due_date
     FROM payments p
     JOIN customers c ON c.id = p.customer_id
     LEFT JOIN dues d ON d.id = p.due_id

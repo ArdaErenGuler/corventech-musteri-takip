@@ -13,12 +13,23 @@ function db(): PDO
             (int) config('db_port', 3306),
             config('db_name')
         );
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+        if (config('db_ssl')) {
+            // Bulut MySQL (TLS zorunlu): sistemdeki sertifika paketini kullan
+            foreach (['/etc/pki/tls/certs/ca-bundle.crt', '/etc/ssl/certs/ca-certificates.crt', '/etc/ssl/cert.pem'] as $ca) {
+                if (is_file($ca)) {
+                    $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+                    break;
+                }
+            }
+            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+        }
         try {
-            $pdo = new PDO($dsn, config('db_user'), config('db_pass'), [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
+            $pdo = new PDO($dsn, config('db_user'), config('db_pass'), $options);
             $pdo->exec("SET time_zone = '" . date('P') . "'");
         } catch (PDOException $e) {
             http_response_code(500);

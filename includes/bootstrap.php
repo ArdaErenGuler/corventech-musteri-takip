@@ -27,23 +27,31 @@ require __DIR__ . '/billing.php';
 require __DIR__ . '/social.php';
 require __DIR__ . '/finance.php';
 require __DIR__ . '/layout.php';
+require __DIR__ . '/session.php';
+require __DIR__ . '/migrate.php';
 
 function config(string $key, $default = null)
 {
     return $GLOBALS['config'][$key] ?? $default;
 }
 
-// Oturum
-$secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-session_name('ctpanel');
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_start();
+// Yeni sürüm yüklendiyse veritabanı güncellemelerini uygula (oturum tablosu dahil), sonra oturumu aç
+auto_migrate();
+
+// Oturum (veritabanında, 30 gün)
+start_app_session();
+// Kullanıldıkça çerez süresini uzat: her gün en az bir kez açılan panelde oturum hiç düşmez
+if (!empty($_SESSION['user_id']) && ($_SESSION['cookie_refreshed'] ?? '') !== date('Y-m-d')) {
+    $p = session_get_cookie_params();
+    setcookie(session_name(), session_id(), [
+        'expires'  => time() + SESSION_LIFETIME,
+        'path'     => $p['path'],
+        'secure'   => $p['secure'],
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    $_SESSION['cookie_refreshed'] = date('Y-m-d');
+}
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');

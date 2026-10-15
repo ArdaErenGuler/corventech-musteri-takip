@@ -40,8 +40,8 @@ if (is_post()) {
             q('UPDATE payments SET customer_id = ?, due_id = ?, amount = ?, paid_at = ?, method = ?, note = ? WHERE id = ?', [...$values, $id]);
             flash('success', 'Ödeme güncellendi.');
         } else {
-            q('INSERT INTO payments (customer_id, due_id, amount, paid_at, method, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
-            flash('success', money($amount) . ' ödeme kaydedildi.');
+            $parts = record_payment($customerId, $dueId, $amount, $paidAt, $method, input('note') ?: null, (int) $user['id']);
+            flash('success', money($amount) . ' ödeme kaydedildi' . ($parts > 1 ? " ve $parts döneme dağıtıldı." : '.'));
         }
         redirect(safe_return(input('return'), 'musteri.php?id=' . $customerId . '#odemeler'));
     }
@@ -108,7 +108,7 @@ layout_start($payment ? 'Ödemeyi düzenle' : 'Ödeme al', 'payments', ['back' =
                     </option>
                 <?php endforeach; ?>
             </select>
-            <span class="hint">Dönem seçilince kalan tutar otomatik yazılır.</span>
+            <span class="hint">Kalan tutar otomatik yazılır. Daha fazlası girilirse fazlası sonraki aylara dağıtılır.</span>
             <?= field_error($errors, 'due_id') ?>
         </div>
         <div class="field<?= isset($errors['amount']) ? ' has-error' : '' ?>">

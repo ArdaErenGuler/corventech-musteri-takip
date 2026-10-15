@@ -316,6 +316,39 @@ function all_customer_balances(): array
     return $out;
 }
 
+/**
+ * Yeni ödemeyi kaydeder. Tutar seçilen dönemin kalanından fazlaysa fazlası, müşterinin sonraki
+ * açık dönemlerine tarih sırasıyla dağıtılır (örn. 3 ayı birden ödeyen müşteri). Hiç açık dönem
+ * kalmazsa artan tutar döneme bağlanmadan (avans) kaydedilir. Dönen: oluşan ödeme satırı sayısı.
+ */
+function record_payment(int $customerId, ?int $dueId, float $amount, string $paidAt, string $method, ?string $note, int $userId): int
+{
+    $insert = db()->prepare('INSERT INTO payments (customer_id, due_id, amount, paid_at, method, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    if (!$dueId) {
+        $insert->execute([$customerId, null, $amount, $paidAt, $method, $note, $userId]);
+        return 1;
+    }
+    $open = q_all(DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.customer_id = ? ORDER BY d.id = ? DESC, d.due_date, d.id', [$customerId, $dueId]);
+    $left = round($amount, 2);
+    $rows = 0;
+    db()->beginTransaction();
+    foreach ($open as $d) {
+        if ($left <= 0.009) {
+            break;
+        }
+        $part = min($left, round((float) $d['remaining'], 2));
+        $insert->execute([$customerId, $d['id'], $part, $paidAt, $method, $note, $userId]);
+        $left = round($left - $part, 2);
+        $rows++;
+    }
+    if ($left > 0.009) {
+        $insert->execute([$customerId, null, $left, $paidAt, $method, trim(($note ? $note . ' · ' : '') . 'Avans'), $userId]);
+        $rows++;
+    }
+    db()->commit();
+    return $rows;
+}
+
 /** Aylık tekrarlayan gelir: aktif aylık siparişler + yıllıkların 1/12'si */
 function monthly_recurring_revenue(): float
 {

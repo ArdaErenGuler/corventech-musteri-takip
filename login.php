@@ -19,6 +19,12 @@ if (is_post()) {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Geçerli bir e-posta yazın.';
         if (mb_strlen($pass) < 8) $errors['password'] = 'Şifre en az 8 karakter olmalı.';
         if ($pass !== ($_POST['password2'] ?? '')) $errors['password2'] = 'Şifreler eşleşmiyor.';
+        $key = (string) config('setup_key', '');
+        if ($key !== '' && !hash_equals($key, (string) ($_POST['setup_key'] ?? ''))) {
+            q('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, NOW())', [client_ip()]);
+            $errors['setup_key'] = 'Kurulum anahtarı hatalı.';
+        }
+        if (login_locked()) $errors['form'] = 'Çok fazla hatalı deneme. ' . LOGIN_LOCK_MINUTES . ' dakika sonra tekrar deneyin.';
 
         if (!$errors && !users_exist()) {
             q("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'admin')", [$name, $email, password_hash($pass, PASSWORD_DEFAULT)]);
@@ -50,6 +56,14 @@ bare_start($setup ? 'Kurulum' : 'Giriş');
 
     <form method="post" class="card form" novalidate>
         <?= csrf_field() ?>
+        <?php if ($setup && config('setup_key', '') !== ''): ?>
+            <div class="field<?= isset($errors['setup_key']) ? ' has-error' : '' ?>">
+                <label for="setup_key">Kurulum anahtarı</label>
+                <input id="setup_key" name="setup_key" type="password" autocomplete="off" required>
+                <span class="hint">Sunucu ayarlarındaki SETUP_KEY değeri.</span>
+                <?php if (isset($errors['setup_key'])): ?><span class="error-text"><?= e($errors['setup_key']) ?></span><?php endif; ?>
+            </div>
+        <?php endif; ?>
         <?php if ($setup): ?>
             <div class="field<?= isset($errors['name']) ? ' has-error' : '' ?>">
                 <label for="name">Ad soyad</label>

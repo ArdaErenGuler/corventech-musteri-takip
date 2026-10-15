@@ -571,10 +571,15 @@ details.table-toggle summary { cursor: pointer; color: var(--accent-text); font-
     background: linear-gradient(135deg, #6330cc, #8f5cf7); color: #fff;
     box-shadow: 0 8px 20px rgb(99 48 204 / 0.25);
 }
-.today-banner:hover { text-decoration: none; filter: brightness(1.05); }
+.today-banner-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: #fff; }
+.today-banner-link:hover { text-decoration: none; }
+.today-banner:hover { filter: brightness(1.05); }
 .today-banner-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: rgb(255 255 255 / 0.18); flex: none; }
 .today-banner-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
 .today-banner-text small { color: rgb(255 255 255 / 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-banner-close { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border: 0; border-radius: 8px; background: rgb(255 255 255 / 0.14); color: #fff; cursor: pointer; }
+.today-banner-close:hover { background: rgb(255 255 255 / 0.26); }
+.today-banner-close .i { width: 18px; height: 18px; }
 .posts-today h2 { display: inline-flex; align-items: center; gap: 8px; }
 .posts-today h2 .i { color: var(--accent-text); }
 
