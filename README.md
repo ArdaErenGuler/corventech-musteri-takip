@@ -13,7 +13,8 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 - **Ödemeler:** tahsilat kaydı; hangi dönem için alındığı ve kalan tutar otomatik gelir
 - **Yenilemeler:** gecikmiş, bugün, bu hafta ve sonraki 30 günün ödemeleri; WhatsApp hatırlatma mesajı; yıllık yenileme takvimi
 - **Görevler:** müşteriye bağlı görevler, sorumlu kişi, son tarih, öncelik
-- **Raporlar:** aylık tahsilat grafiği, hizmet bazında gelir, aylık düzenli gelir, tahsilat oranı, en çok borcu olanlar
+- **Gelir / Gider:** hosting, domain, Claude gibi şirket giderleri ve müşteri dışı gelirler
+- **Raporlar:** ay ay Arda'nın payı, Melih'in payı ve şirket kasası; kişisel müşterilerden gelen paranın 1/3'ü şirkete (oran Ayarlar'dan değişir), ortak müşterilerin tamamı şirkete; şirket net = şirket payı + diğer gelir − gider; kişi bazında bekleyen alacaklar
 - **Ayarlar:** profil ve şifre, ortak kullanıcılar (yönetici / kullanıcı), WhatsApp mesaj şablonu, açık/koyu tema
 
 ## Ödeme planı nasıl çalışır?
@@ -56,6 +57,7 @@ Ardından tarayıcıda `http://localhost:8090` adresini açın.
 Verileriniz dururken yeni sürüme geçmek için dosyaları yükleyin, ardından phpMyAdmin'de `migrations/` klasöründeki henüz uygulanmamış dosyaları sırayla içe aktarın:
 
 - `001_sahip_ve_takvim.sql` — müşteri sahibi (Arda / Melih / Ortak), fiyatsız paketler, sosyal medya takvimi
+- `002_gelir_gider.sql` — şirket gelir/gider kaydı ve şirket payı oranı
 
 ### Bildirimler hakkında
 

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
     'payments'   => ['odemeler.php', 'Ödemeler', 'wallet'],
     'renewals'   => ['yenilemeler.php', 'Yenilemeler', 'refresh'],
     'tasks'      => ['gorevler.php', 'Görevler', 'check-square'],
+    'finance'    => ['gelir-gider.php', 'Gelir / Gider', 'briefcase'],
     'reports'    => ['raporlar.php', 'Raporlar', 'chart'],
     'settings'   => ['ayarlar.php', 'Ayarlar', 'sliders'],
 ];

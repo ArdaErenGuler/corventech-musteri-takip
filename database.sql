@@ -11,7 +11,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
+DROP TABLE IF EXISTS transactions, posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -188,6 +188,20 @@ CREATE TABLE posts (
     CONSTRAINT fk_posts_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
+-- Şirket kasası hareketleri: hosting, domain, Claude gibi giderler ve müşteri dışı gelirler
+CREATE TABLE transactions (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    type        ENUM('income','expense') NOT NULL,
+    category    VARCHAR(60) NOT NULL,
+    amount      DECIMAL(12,2) NOT NULL,
+    txn_date    DATE NOT NULL,
+    description VARCHAR(255) NULL,
+    created_by  INT UNSIGNED NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_date (txn_date),
+    CONSTRAINT fk_txn_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
 -- ---------------------------------------------------------------------
 -- Ayarlar
 -- ---------------------------------------------------------------------
@@ -195,6 +209,7 @@ CREATE TABLE posts (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
+('company_share', '1/3'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------
@@ -307,3 +322,12 @@ INSERT INTO posts (customer_id, title, platforms, post_type, scheduled_date, sch
 (2, 'Hasta yorumu', 'instagram', 'post', CURDATE() - INTERVAL 1 DAY, '13:00', NULL, 'planned', NULL),
 (1, 'Yeni sezon menüsü', 'instagram,facebook', 'carousel', CURDATE() - INTERVAL 3 DAY, '10:00', NULL, 'published', NOW() - INTERVAL 3 DAY),
 (4, 'Öncesi / sonrası', 'instagram', 'reels', CURDATE() - INTERVAL 5 DAY, '18:00', NULL, 'published', NOW() - INTERVAL 5 DAY);
+
+-- Örnek şirket gelir/giderleri
+INSERT INTO transactions (type, category, amount, txn_date, description) VALUES
+('expense', 'Hosting', 3600, CURDATE() - INTERVAL 70 DAY, 'Yıllık sunucu yenileme'),
+('expense', 'Claude / Yazılım', 3400, DATE_FORMAT(CURDATE(), '%Y-%m-01'), 'Claude aboneliği'),
+('expense', 'Claude / Yazılım', 3400, DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-01'), 'Claude aboneliği'),
+('expense', 'Domain', 450, CURDATE() - INTERVAL 12 DAY, 'corventech.tr yenileme'),
+('expense', 'Reklam', 1500, CURDATE() - INTERVAL 20 DAY, 'Instagram reklamı'),
+('income', 'Diğer gelir', 2000, CURDATE() - INTERVAL 8 DAY, 'Danışmanlık');

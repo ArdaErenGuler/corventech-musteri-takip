@@ -202,6 +202,20 @@
         });
     });
 
+    /* ---------- Gelir / gider: türe göre kategori listesi ---------- */
+    $$('[data-txn-type]').forEach(function (r) {
+        r.addEventListener('change', function () {
+            var select = r.form.querySelector('[name="category"]');
+            $$('optgroup', select).forEach(function (g) {
+                var on = g.getAttribute('data-for') === r.value;
+                g.disabled = !on;
+                g.hidden = !on;
+            });
+            var first = $('optgroup[data-for="' + r.value + '"] option', select);
+            if (first) select.value = first.value;
+        });
+    });
+
     /* ---------- Sosyal medya takvimi: güne dokununca o günün listesi ---------- */
     var calendar = $('[data-calendar]');
     if (calendar) {

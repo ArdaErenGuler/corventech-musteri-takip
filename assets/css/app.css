@@ -470,6 +470,16 @@ table.data { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
 table.data th { color: var(--muted); font-weight: 700; font-size: 0.78rem; }
 table.data td.num, table.data th.num { text-align: right; }
+table.data tfoot th { color: var(--heading); font-size: 0.88rem; border-top: 2px solid var(--line-strong); border-bottom: 0; }
+table.data tr.is-current td { background: var(--accent-subtle); }
+@media (max-width: 719px) {
+    table.data th, table.data td { padding: 8px 6px; font-size: 0.82rem; }
+    table.data .col-total { display: none; }
+}
+table.data td.num, table.data th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ledger dt, .ledger dd { padding: 2px 0; }
+.ledger dd { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ledger .ledger-total { border-top: 1px solid var(--line-strong); padding-top: 10px; margin-top: 4px; font-weight: 800; color: var(--heading); font-size: 1rem; }
 details.table-toggle summary { cursor: pointer; color: var(--accent-text); font-weight: 600; font-size: 0.85rem; margin-top: 12px; }
 
 /* ---------- Sosyal medya takvimi ---------- */

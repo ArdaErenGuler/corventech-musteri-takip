@@ -90,7 +90,10 @@ if (is_post()) {
             $days = input_int('upcoming_days');
             if ($company === '') $errors['company_name'] = 'Firma adını yazın.';
             if (!$days || $days < 1 || $days > 365) $errors['upcoming_days'] = '1 ile 365 arasında bir sayı yazın.';
+            $share = input('company_share');
+            if (!isset(COMPANY_SHARE_OPTIONS[$share])) $errors['company_share'] = 'Oran seçin.';
             if (!$errors) {
+                set_setting('company_share', $share);
                 set_setting('company_name', $company);
                 set_setting('upcoming_days', (string) $days);
                 set_setting('wa_template', input('wa_template'));
@@ -245,6 +248,16 @@ layout_start('Ayarlar', 'settings', ['fab' => false]);
                 <input id="upcoming_days" name="upcoming_days" type="number" inputmode="numeric" min="1" max="365" value="<?= e(old('upcoming_days', setting('upcoming_days') ?: '30')) ?>">
                 <span class="hint">Dashboard ve Yenilemeler kaç gün ilerisini gösterecek.</span>
                 <?= field_error($errors, 'upcoming_days') ?>
+            </div>
+            <div class="field span-2<?= isset($errors['company_share']) ? ' has-error' : '' ?>">
+                <label for="company_share">Şirket payı (Arda / Melih müşterilerinden)</label>
+                <select id="company_share" name="company_share">
+                    <?php foreach (COMPANY_SHARE_OPTIONS as $k => $label): ?>
+                        <option value="<?= $k ?>"<?= old('company_share', company_share_label()) === $k ? ' selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="hint">Kişisel müşteriden gelen ödemenin bu kadarı şirket kasasına, kalanı müşteri sahibine yazılır. Ortak müşterilerin tamamı şirkete gider.</span>
+                <?= field_error($errors, 'company_share') ?>
             </div>
             <div class="field span-2">
                 <label for="wa_template">WhatsApp hatırlatma mesajı</label>

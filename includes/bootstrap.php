@@ -25,6 +25,7 @@ require __DIR__ . '/helpers.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/billing.php';
 require __DIR__ . '/social.php';
+require __DIR__ . '/finance.php';
 require __DIR__ . '/layout.php';
 
 function config(string $key, $default = null)
