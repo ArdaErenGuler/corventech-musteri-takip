@@ -30,6 +30,8 @@ Dönemler, tarihi yaklaştıkça (varsayılan 60 gün önceden) otomatik oluşur
 
 ## Kurulum
 
+> **Vercel'e kurulum:** adım adım rehber için [VERCEL-KURULUM.md](VERCEL-KURULUM.md).
+
 ### 1. Paylaşımlı hosting (cPanel vb.)
 
 1. Hosting panelinden bir **MySQL veritabanı** ve kullanıcısı oluşturun, karakter seti `utf8mb4` olsun.

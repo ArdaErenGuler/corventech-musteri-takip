@@ -49,6 +49,21 @@ function auto_migrate(): void
     if (db_version() >= DB_VERSION) {
         return;
     }
+    // Hiç tablo yoksa (yeni ve boş veritabanı) database.sql ile kur: phpMyAdmin'e gerek kalmaz
+    if (!q_val("SHOW TABLES LIKE 'settings'") && !q_val("SHOW TABLES LIKE 'customers'")) {
+        if (q_val("SELECT GET_LOCK('ctpanel_migrate', 30)")) {
+            try {
+                if (!q_val("SHOW TABLES LIKE 'settings'")) {
+                    foreach (split_sql((string) file_get_contents(APP_ROOT . '/database.sql')) as $stmt) {
+                        db()->exec($stmt);
+                    }
+                }
+            } finally {
+                q("SELECT RELEASE_LOCK('ctpanel_migrate')");
+            }
+        }
+        return;
+    }
     if (!q_val("SELECT GET_LOCK('ctpanel_migrate', 30)")) {
         return;
     }

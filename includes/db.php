@@ -19,11 +19,21 @@ function db(): PDO
             PDO::ATTR_EMULATE_PREPARES   => false,
         ];
         if (config('db_ssl')) {
-            // Bulut MySQL (TLS zorunlu): sistemdeki sertifika paketini kullan
-            foreach (['/etc/pki/tls/certs/ca-bundle.crt', '/etc/ssl/certs/ca-certificates.crt', '/etc/ssl/cert.pem'] as $ca) {
-                if (is_file($ca)) {
-                    $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
-                    break;
+            // Bulut MySQL (TLS zorunlu). Sağlayıcı kendi sertifikasını veriyorsa (Aiven: ca.pem)
+            // içeriği DB_SSL_CA ortam değişkeninde gelir; yoksa sistemdeki sertifika paketi kullanılır.
+            $caPem = (string) config('db_ssl_ca', '');
+            if ($caPem !== '') {
+                $caFile = sys_get_temp_dir() . '/ctpanel-db-ca-' . md5($caPem) . '.pem';
+                if (!is_file($caFile)) {
+                    file_put_contents($caFile, str_replace('\n', "\n", $caPem));
+                }
+                $options[PDO::MYSQL_ATTR_SSL_CA] = $caFile;
+            } else {
+                foreach (['/etc/pki/tls/certs/ca-bundle.crt', '/etc/ssl/certs/ca-certificates.crt', '/etc/ssl/cert.pem'] as $ca) {
+                    if (is_file($ca)) {
+                        $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+                        break;
+                    }
                 }
             }
             $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;

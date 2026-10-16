@@ -27,7 +27,11 @@ function days_since_backup(): ?int
 function backup_due(): bool
 {
     $days = days_since_backup();
-    return $days === null || $days >= BACKUP_REMIND_DAYS;
+    if ($days === null) {
+        // Hiç yedek yoksa: yedeklenecek bir şey (müşteri) eklendiğinde hatırlat; boş yeni panelde değil
+        return (int) q_val('SELECT COUNT(*) FROM customers') > 0;
+    }
+    return $days >= BACKUP_REMIND_DAYS;
 }
 
 /** Tüm tabloların yapısı ve verisi; boş bir veritabanına içe aktarılarak geri yüklenir */
