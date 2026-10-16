@@ -1,0 +1,28 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Gizli dosyalara doğrudan erişimi engelle
+<FilesMatch "^(config(\.local)?\.php|.*\.sql|.*\.md|\.git.*|\.vercelignore|vercel\.json)$">
+    Require all denied
+</FilesMatch>
+
+# Kod, test ve veritabanı güncelleme klasörleri dışarıdan açılamaz
+RedirectMatch 404 /\.git
+RedirectMatch 404 /\.claude/
+RedirectMatch 404 /includes/
+RedirectMatch 404 /migrations/
+RedirectMatch 404 /tests/
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "same-origin"
+    <FilesMatch "^sw\.js$">
+        Header set Cache-Control "no-cache"
+        Header set Service-Worker-Allowed "./"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>

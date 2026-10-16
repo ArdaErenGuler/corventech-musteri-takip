@@ -1,0 +1,6 @@
+.claude
+.git
+tests
+ornek-veri.sql
+config.local.php
+*.log
