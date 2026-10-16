@@ -29,6 +29,7 @@ require __DIR__ . '/finance.php';
 require __DIR__ . '/layout.php';
 require __DIR__ . '/session.php';
 require __DIR__ . '/migrate.php';
+require __DIR__ . '/backup.php';
 
 function config(string $key, $default = null)
 {

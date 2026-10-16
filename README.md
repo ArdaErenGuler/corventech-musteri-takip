@@ -15,6 +15,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 - **Görevler:** müşteriye bağlı görevler, sorumlu kişi, son tarih, öncelik
 - **Gelir / Gider:** hosting, domain, Claude gibi giderler ve diğer gelirler; hangi kasadan (Şirket / Arda / Melih) olduğu seçilir; tek sefer, her ay veya her yıl tekrar (düzenli kayıtlar kendiliğinden yazılır)
 - **Raporlar:** yıllık toplam ve aylık tahsilat grafiği; bir aya dokununca Arda, Melih ve Şirket kasaları; düzenli gelir, tahsilat oranı, hizmet bazında tahsilat, kişi bazında alacaklar
+- **Yedekleme:** tek butonla ZIP (veritabanı .sql + Excel'de açılan tablolar); 7 gün yedek alınmazsa panelde ve menüde hatırlatma
 - **Ayarlar:** profil ve şifre, ortak kullanıcılar (yönetici / kullanıcı), WhatsApp mesaj şablonu, açık/koyu tema
 
 ## Ödeme planı nasıl çalışır?
@@ -93,6 +94,15 @@ return [
 ```
 
 Vercel gibi ortamlarda aynı ayarlar **ortam değişkenleriyle** verilir: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_SSL` (bulut MySQL için `true`), `SETUP_KEY`, `TRUST_PROXY` (vekil sunucu arkasında `true`).
+
+## Yedekleme
+
+Menüdeki **Yedekleme** sayfasından **Yedek al**'a basın; `corventech-yedek-(tarih).zip` iner:
+
+- `veritabani-(tarih).sql` — asıl yedek. Boş bir veritabanına phpMyAdmin → İçe Aktar ile yüklenince panel aynen geri gelir; başka bir hostinge taşırken de bu dosya kullanılır.
+- `excel/` — müşteriler, işler, ödemeler, gelir/gider ve takvim Excel'de açılabilir tablolar olarak (okumak için).
+
+Son yedekten 7 gün geçince her sayfada ve menüde hatırlatma çıkar. Dosyayı sunucudan ayrı bir yerde (Google Drive vb.) saklayın; içinde müşteri bilgileri vardır.
 
 ## Güvenlik
 

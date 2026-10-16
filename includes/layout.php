@@ -14,6 +14,7 @@ const NAV_ITEMS = [
     'tasks'      => ['gorevler.php', 'Görevler', 'check-square'],
     'finance'    => ['gelir-gider.php', 'Gelir / Gider', 'briefcase'],
     'reports'    => ['raporlar.php', 'Raporlar', 'chart'],
+    'backup'     => ['yedekleme.php', 'Yedekleme', 'download'],
     'settings'   => ['ayarlar.php', 'Ayarlar', 'sliders'],
 ];
 
@@ -83,7 +84,7 @@ function layout_start(string $title, string $active, array $opts = []): void
     $openTasks = (int) q_val("SELECT COUNT(*) FROM tasks WHERE status <> 'done' AND (assigned_to = ? OR assigned_to IS NULL)", [$user['id']]);
     $duePosts = $active === 'calendar' || $active === 'dashboard' ? [] : due_posts();
     $postCount = (int) q_val("SELECT COUNT(*) FROM posts WHERE status <> 'published' AND scheduled_date <= CURDATE()");
-    $badges = ['renewals' => $soon, 'tasks' => $openTasks, 'calendar' => $postCount];
+    $badges = ['renewals' => $soon, 'tasks' => $openTasks, 'calendar' => $postCount, 'backup' => backup_due() ? '!' : 0];
     ?>
 <body>
 <?php require __DIR__ . '/icons.php'; ?>
@@ -98,7 +99,7 @@ function layout_start(string $title, string $active, array $opts = []): void
             <?php foreach (NAV_ITEMS as $key => [$href, $label, $ic]): ?>
                 <a href="<?= $href ?>" class="nav-link<?= $key === $active ? ' is-active' : '' ?>"<?= $key === $active ? ' aria-current="page"' : '' ?>>
                     <?= icon($ic) ?><span><?= e($label) ?></span>
-                    <?php if (!empty($badges[$key])): ?><b class="nav-badge<?= in_array($key, ['renewals', 'calendar'], true) ? ' is-alert' : '' ?>"><?= $badges[$key] ?></b><?php endif; ?>
+                    <?php if (!empty($badges[$key])): ?><b class="nav-badge<?= in_array($key, ['renewals', 'calendar'], true) ? ' is-alert' : ($key === 'backup' ? ' is-warning' : '') ?>"><?= $badges[$key] ?></b><?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </nav>
@@ -146,6 +147,12 @@ function layout_start(string $title, string $active, array $opts = []): void
                 <button class="today-banner-close" type="button" data-banner-close aria-label="Bugün için gizle"><?= icon('x') ?></button>
                 </div>
                 <script>try { if (localStorage.getItem('banner-hidden') === '<?= today() ?>') document.querySelector('[data-banner]').hidden = true; } catch (e) {}</script>
+            <?php endif; ?>
+            <?php if (backup_due() && $active !== 'backup'):
+                $bd = days_since_backup(); ?>
+                <a class="flash flash-warning" href="yedekleme.php">
+                    <?= icon('alert') ?><span><?= $bd === null ? 'Henüz yedek alınmadı.' : "Son yedek $bd gün önce alındı." ?> <u>Şimdi yedek alın</u></span>
+                </a>
             <?php endif; ?>
             <?php foreach (take_flashes() as $f): ?>
                 <div class="flash flash-<?= e($f['type']) ?>" role="status"><?= icon($f['type'] === 'error' ? 'alert' : 'check') ?><span><?= e($f['message']) ?></span></div>

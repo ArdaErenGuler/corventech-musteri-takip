@@ -78,7 +78,7 @@
     });
 
     $$('.flash').forEach(function (f) {
-        if (f.classList.contains('flash-error')) return;
+        if (f.classList.contains('flash-error') || f.classList.contains('flash-warning')) return;
         setTimeout(function () {
             f.classList.add('is-hiding');
             setTimeout(function () { f.remove(); }, 350);
