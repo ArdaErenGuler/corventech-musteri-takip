@@ -1,12 +1,12 @@
 <?php
 /**
  * Oturumlar veritabanında tutulur.
- *  - Telefonda uygulama gibi kullanırken 30 gün boyunca tekrar giriş istenmez
+ *  - Telefonda uygulama gibi kullanırken 1 yıl boyunca (her kullanımda uzar) tekrar giriş istenmez
  *    (PHP'nin varsayılan dosya oturumu 24 dakikada silinir, tarayıcı kapanınca biter).
  *  - Birden çok sunucu örneği olan ortamlarda (Vercel vb.) oturum kaybolmaz.
  */
 
-const SESSION_LIFETIME = 60 * 60 * 24 * 30;   // 30 gün
+const SESSION_LIFETIME = 60 * 60 * 24 * 365;   // 1 yıl (her kullanımda yenilenir; panel kapalı kalmadıkça giriş istemez)
 
 class DbSessionHandler implements SessionHandlerInterface
 {

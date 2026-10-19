@@ -64,7 +64,7 @@ Yeni dosyaları yüklemeniz yeterli. Panel ilk açıldığında `migrations/` kl
 - `001_sahip_ve_takvim.sql` — müşteri sahibi (Arda / Melih / Ortak), fiyatsız paketler, sosyal medya takvimi
 - `002_gelir_gider.sql` — gelir/gider kaydı
 - `003_is_bazinda_pay.sql` — iş bazında pay seçimi, gelir/giderde kasa, düzenli (aylık/yıllık) gelir/giderler
-- `004_oturumlar.sql` — oturumlar veritabanında (30 gün; telefonda tekrar tekrar giriş istemez)
+- `004_oturumlar.sql` — oturumlar veritabanında (telefonda tekrar tekrar giriş istemez)
 - `005_ortak_kasa.sql` — müşteri sahibi, iş payı ve kasa seçimi kaldırıldı (her şey ortak; şirket kasası)
 - `006_taksit.sql` — taksitli ödeme (toplam fiyat + taksit sayısı)
 - `007_paket_odeme_tipleri.sql` — (008 ile geçersiz kılındı)
@@ -116,7 +116,7 @@ Son yedekten 7 gün geçince her sayfada ve menüde hatırlatma çıkar. Dosyay�
 - Tüm sorgular PDO prepared statement ile çalışır; tüm formlarda CSRF koruması vardır.
 - Şifreler `password_hash` ile saklanır. 5 hatalı girişten sonra 15 dakika beklenir.
 - İlk yönetici hesabı kurulum anahtarı (`setup_key` / `SETUP_KEY`) ile korunur.
-- Oturumlar veritabanında, 30 gün geçerli; her gün kullanıldıkça uzar.
+- Oturumlar veritabanında, 1 yıl geçerli; her gün kullanıldıkça uzar (sürekli giriş istemez).
 - `.htaccess`; `config.php`, `.sql` dosyaları, `includes/`, `migrations/` ve `tests/` klasörlerine dışarıdan erişimi engeller.
 - Service worker müşteri verisi içeren sayfaları önbelleğe almaz; yalnızca CSS, ikon ve çevrimdışı sayfasını saklar.
 
