@@ -172,12 +172,31 @@
             if (fdl) fdl.textContent = cycle === 'installment' ? 'İlk taksit tarihi' : 'İlk ödeme tarihi';
             updateInstallmentPreview();
         }
+        // Paket seçilince yalnızca o paketin izin verdiği ödeme tipleri görünür (ilk izinli olan seçilir)
+        var serviceSel = $('[name="service_id"]', orderForm);
+        function syncAllowedCycles(userChange) {
+            if (!serviceSel) return;
+            var opt = serviceSel.options[serviceSel.selectedIndex];
+            var allowed = ((opt && opt.getAttribute('data-cycles')) || '').split(',').filter(Boolean);
+            var current = cycleValue();
+            $$('label[data-cycle]', orderForm).forEach(function (l) {
+                var k = l.getAttribute('data-cycle');
+                // Sayfa ilk açıldığında kayıtlı işin mevcut tipi gizlenmez / değiştirilmez
+                l.hidden = allowed.length > 0 && allowed.indexOf(k) < 0 && !(!userChange && k === current);
+            });
+            if (userChange && allowed.length && allowed.indexOf(current) < 0) {
+                var first = cycles.filter(function (r) { return r.value === allowed[0]; })[0];
+                if (first) { first.checked = true; syncCycle(); }
+            }
+        }
+        if (serviceSel) serviceSel.addEventListener('change', function () { syncAllowedCycles(true); });
         cycles.forEach(function (r) { r.addEventListener('change', syncCycle); });
         ['price', 'installments'].forEach(function (n) {
             var el = $('[name="' + n + '"]', orderForm);
             if (el) el.addEventListener('input', updateInstallmentPreview);
         });
         syncCycle();
+        syncAllowedCycles(false);
         if (firstDue && start) {
             firstDue.addEventListener('input', function () { firstDueTouched = true; });
             start.addEventListener('change', function () { if (!firstDueTouched) firstDue.value = start.value; });

@@ -22,6 +22,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 
 Yeni müşteri eklerken (ya da sonradan müşteri sayfasından) hizmet, ödeme tipi, tutar ve **ilk ödeme tarihi** girilir. Panel sonraki ödeme tarihlerini kendisi hesaplar:
 
+- **Paket kuralları:** Sosyal Medya yalnızca **aylık**; Kurumsal Web Sitesi ve İşletme Paneli **yıllık ya da taksitli**; kombo paketlerde ve özel hizmetlerde kısıtlama yok. Paket seçilince form yalnızca izinli ödeme tiplerini gösterir, sunucu da denetler (`services.allowed_cycles`).
 - **Taksitli:** toplam tutar + taksit sayısı girilir (10.500 ₺ ÷ 3 = 3 × 3.500 ₺); taksitler ilk taksit tarihinden itibaren her ay aynı güne yazılır, kuruş farkı son taksitte kapanır. Ertesi yıl işteki **Yeni dönem için yenile** butonuyla yeni fiyat ve taksit sayısıyla yeni iş açılır; önceki iş tamamlandı olur, kalan taksitleri borç olarak durur. **Yenilemeler** sayfasındaki yenileme takvimi taksitli işlerin yıl dönümünü de gösterir.
 - **Aylık:** her ay aynı gün (31'i olmayan aylarda ayın son günü)
 - **Yıllık:** her yıl aynı gün
@@ -67,6 +68,7 @@ Yeni dosyaları yüklemeniz yeterli. Panel ilk açıldığında `migrations/` kl
 - `004_oturumlar.sql` — oturumlar veritabanında (30 gün; telefonda tekrar tekrar giriş istemez)
 - `005_ortak_kasa.sql` — müşteri sahibi, iş payı ve kasa seçimi kaldırıldı (her şey ortak; şirket kasası)
 - `006_taksit.sql` — taksitli ödeme (toplam fiyat + taksit sayısı)
+- `007_paket_odeme_tipleri.sql` — paketlere göre izin verilen ödeme tipleri
 
 Yeni bir güncelleme eklerken: `migrations/005_....sql` oluşturun, `includes/migrate.php` içindeki `DB_VERSION`'u artırın ve `database.sql`'deki `db_version` değerini güncelleyin.
 

@@ -61,7 +61,15 @@ function create_order(array $o, int $userId): int
  * Sipariş formu alanlarını doğrular ve normalleştirir (müşteri hariç).
  * Dönen dizi: [$data, $errors]
  */
-function validate_order_input(): array
+/** Paketin izin verdiği ödeme tipleri (null = kısıtlama yok) */
+function allowed_cycles_for(?int $serviceId): ?array
+{
+    $csv = $serviceId ? (string) q_val('SELECT allowed_cycles FROM services WHERE id = ?', [$serviceId]) : '';
+    $list = array_values(array_filter(array_map('trim', explode(',', $csv)), fn($k) => isset(CYCLE_LABELS[$k])));
+    return $list ?: null;
+}
+
+function validate_order_input(?string $keepCycle = null): array
 {
     $errors = [];
     $d = [
@@ -78,7 +86,12 @@ function validate_order_input(): array
     ];
     if ($d['service_id'] && !q_val('SELECT id FROM services WHERE id = ?', [$d['service_id']])) $errors['service_id'] = 'Geçersiz paket.';
     if (!$d['service_id'] && $d['title'] === '') $errors['service_id'] = 'Paket seçin ya da hizmete bir ad yazın.';
-    if (!isset(CYCLE_LABELS[$d['billing_cycle']])) $errors['billing_cycle'] = 'Ödeme tipini seçin.';
+    if (!isset(CYCLE_LABELS[$d['billing_cycle']])) {
+        $errors['billing_cycle'] = 'Ödeme tipini seçin.';
+    } elseif (($allowed = allowed_cycles_for($d['service_id'])) && !in_array($d['billing_cycle'], $allowed, true) && $d['billing_cycle'] !== $keepCycle) {
+        // (Kayıtlı işin mevcut tipi düzenlemede olduğu gibi bırakılabilir)
+        $errors['billing_cycle'] = 'Bu paket için yalnızca ' . implode(' veya ', array_map(fn($k) => mb_strtolower(CYCLE_LABELS[$k]), $allowed)) . ' ödeme seçilebilir.';
+    }
     if ($d['price'] === null || $d['price'] < 0) $errors['price'] = 'Tutarı yazın.';
     if ($d['setup_fee'] < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
     if (!$d['start_date']) $errors['start_date'] = 'Tarih seçin.';

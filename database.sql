@@ -86,6 +86,7 @@ CREATE TABLE services (
     name              VARCHAR(120) NOT NULL,
     kind              ENUM('single','combo') NOT NULL DEFAULT 'single',
     description       TEXT NULL,
+    allowed_cycles    VARCHAR(60) NULL COMMENT 'İzin verilen ödeme tipleri (virgülle); boşsa hepsi',
     is_active         TINYINT(1) NOT NULL DEFAULT 1,
     sort_order        INT NOT NULL DEFAULT 0,
     created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -234,17 +235,17 @@ CREATE TABLE transactions (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
-('db_version', '6'),
+('db_version', '7'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------
 -- Paketler (6 adet) — fiyat yok, her müşteride elle girilir
 -- ---------------------------------------------------------------------
 
-INSERT INTO services (id, name, kind, description, sort_order) VALUES
-(1, 'Sosyal Medya', 'single', 'Hesap yönetimi, içerik planı ve paylaşımlar.', 1),
-(2, 'Kurumsal Web Sitesi', 'single', 'Site tasarımı, kurulum, barındırma ve bakım.', 2),
-(3, 'İşletme Paneli', 'single', 'İşletmeye özel yönetim paneli.', 3),
-(4, 'Web Sitesi + Sosyal Medya', 'combo', NULL, 4),
-(5, 'İşletme Paneli + Sosyal Medya', 'combo', NULL, 5),
-(6, 'Full Paket (Web + Panel + Sosyal Medya)', 'combo', NULL, 6);
+INSERT INTO services (id, name, kind, description, allowed_cycles, sort_order) VALUES
+(1, 'Sosyal Medya', 'single', 'Hesap yönetimi, içerik planı ve paylaşımlar.', 'monthly', 1),
+(2, 'Kurumsal Web Sitesi', 'single', 'Site tasarımı, kurulum, barındırma ve bakım.', 'installment,yearly', 2),
+(3, 'İşletme Paneli', 'single', 'İşletmeye özel yönetim paneli.', 'installment,yearly', 3),
+(4, 'Web Sitesi + Sosyal Medya', 'combo', NULL, NULL, 4),
+(5, 'İşletme Paneli + Sosyal Medya', 'combo', NULL, NULL, 5),
+(6, 'Full Paket (Web + Panel + Sosyal Medya)', 'combo', NULL, NULL, 6);

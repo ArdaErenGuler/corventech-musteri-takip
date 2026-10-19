@@ -11,7 +11,7 @@ $ov = fn($k) => e(old($k, $o[$k] ?? ''));
     <select id="service_id" name="service_id">
         <option value="">Özel hizmet (paketsiz)</option>
         <?php foreach ($services as $s): ?>
-            <option value="<?= (int) $s['id'] ?>"<?= (int) old('service_id', $o['service_id'] ?? '') === (int) $s['id'] ? ' selected' : '' ?>><?= e($s['name']) ?></option>
+            <option value="<?= (int) $s['id'] ?>" data-cycles="<?= e($s['allowed_cycles'] ?? '') ?>"<?= (int) old('service_id', $o['service_id'] ?? '') === (int) $s['id'] ? ' selected' : '' ?>><?= e($s['name']) ?></option>
         <?php endforeach; ?>
     </select>
     <?= field_error($errors, 'service_id') ?>
@@ -24,7 +24,7 @@ $ov = fn($k) => e(old($k, $o[$k] ?? ''));
     <legend class="label">Ödeme tipi</legend>
     <div class="segmented">
         <?php foreach (CYCLE_LABELS as $k => $label): ?>
-            <label><input type="radio" name="billing_cycle" value="<?= $k ?>"<?= old('billing_cycle', $o['billing_cycle'] ?? 'monthly') === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
+            <label data-cycle="<?= $k ?>"><input type="radio" name="billing_cycle" value="<?= $k ?>"<?= old('billing_cycle', $o['billing_cycle'] ?? 'monthly') === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
         <?php endforeach; ?>
     </div>
     <?= field_error($errors, 'billing_cycle') ?>

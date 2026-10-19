@@ -6,7 +6,7 @@
  * veritabanıyla çalışırsa panel ilk açılışta bekleyen güncellemeleri kendiliğinden uygular (auto_migrate).
  */
 
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 function db_version(): int
 {

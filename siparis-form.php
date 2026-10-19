@@ -39,7 +39,7 @@ if (is_post()) {
 
     $customerId = input_int('customer_id');
     $status = $order ? input('status') : 'active';
-    [$d, $errors] = validate_order_input();
+    [$d, $errors] = validate_order_input($order['billing_cycle'] ?? null);
     if (!$customerId || !q_val('SELECT id FROM customers WHERE id = ?', [$customerId])) $errors['customer_id'] = 'Müşteri seçin.';
     if (!isset(ORDER_STATUS_LABELS[$status])) $errors['status'] = 'Durum seçin.';
 
