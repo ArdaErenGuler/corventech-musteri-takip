@@ -14,6 +14,7 @@ const CYCLE_LABELS = [
     'one_time' => 'Tek seferlik',
     'monthly'  => 'Aylık',
     'yearly'   => 'Yıllık',
+    'installment' => 'Taksitli',
 ];
 
 const ORDER_STATUS_LABELS = [
@@ -43,9 +44,9 @@ const CUSTOMER_STATUS_LABELS = [
 function create_order(array $o, int $userId): int
 {
     q(
-        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-        [$o['customer_id'], $o['service_id'] ?: null, $o['title'] ?: null, $o['billing_cycle'], $o['price'], $o['setup_fee'],
+        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, installments, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        [$o['customer_id'], $o['service_id'] ?: null, $o['title'] ?: null, $o['billing_cycle'], $o['price'], $o['installments'] ?? 1, $o['setup_fee'],
          $o['start_date'], $o['first_due_date'], $o['end_date'] ?? null, $o['notes'] ?? null, $userId]
     );
     $id = (int) db()->lastInsertId();
@@ -68,6 +69,7 @@ function validate_order_input(): array
         'title'          => input('title'),
         'billing_cycle'  => input('billing_cycle'),
         'price'          => input_money('price'),
+        'installments'   => max(1, min(36, input_int('installments') ?? 1)),
         'setup_fee'      => input_money('setup_fee') ?? 0.0,
         'start_date'     => input_date('start_date'),
         'first_due_date' => input_date('first_due_date'),
@@ -81,7 +83,15 @@ function validate_order_input(): array
     if ($d['setup_fee'] < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
     if (!$d['start_date']) $errors['start_date'] = 'Tarih seçin.';
 
-    if ($d['billing_cycle'] === 'one_time') {
+    if ($d['billing_cycle'] !== 'installment') {
+        $d['installments'] = 1;
+    }
+    if ($d['billing_cycle'] === 'installment') {
+        if ($d['installments'] < 2) $errors['installments'] = 'Taksit sayısı en az 2 olmalı.';
+        $d['first_due_date'] = $d['first_due_date'] ?: $d['start_date'];
+        $d['setup_fee'] = 0.0;
+        $d['end_date'] = null;
+    } elseif ($d['billing_cycle'] === 'one_time') {
         $d['first_due_date'] = $d['start_date'];
         $d['setup_fee'] = 0.0;
         $d['end_date'] = null;
@@ -109,6 +119,19 @@ function period_due_date(string $firstDue, string $cycle, int $n): string
     return add_months_clamped($firstDue, ($n - 1) * $step);
 }
 
+/**
+ * Toplam tutarı taksitlere böler; kuruş farkı son taksitte kapanır.
+ * 10500 / 3 → [3500, 3500, 3500];  10000 / 3 → [3333.33, 3333.33, 3333.34]
+ */
+function installment_amounts(float $total, int $count): array
+{
+    $count = max(1, $count);
+    $each = round($total / $count, 2);
+    $out = array_fill(0, $count, $each);
+    $out[$count - 1] = round($total - $each * ($count - 1), 2);
+    return $out;
+}
+
 /** Siparişin eksik dönemlerini oluşturur (var olanlara dokunmaz). */
 function sync_order_dues(array $o): void
 {
@@ -125,7 +148,16 @@ function sync_order_dues(array $o): void
         return (!$from || $date >= $from) && (!$end || $date <= $end);
     };
 
-    if ($o['billing_cycle'] === 'one_time') {
+    if ($o['billing_cycle'] === 'installment') {
+        // Bütün taksitler baştan yazılır (aylık, ilk taksit tarihinden itibaren)
+        foreach (installment_amounts((float) $o['price'], (int) $o['installments']) as $i => $amount) {
+            $n = $i + 1;
+            $date = period_due_date($o['first_due_date'], 'monthly', $n);
+            if (!isset($existing[$n]) && $allowed($date)) {
+                $rows[] = [$n, $date, $amount];
+            }
+        }
+    } elseif ($o['billing_cycle'] === 'one_time') {
         if (!isset($existing[1]) && $allowed($o['first_due_date'])) {
             $rows[] = [1, $o['first_due_date'], $o['price']];
         }
@@ -197,7 +229,7 @@ function trim_future_dues(int $orderId): void
 /** Dönemleri ödenen tutarla birlikte getiren temel sorgu (sonuna WHERE eklenir). */
 const DUES_SELECT = "
     SELECT d.*, COALESCE(pp.paid, 0) AS paid, d.amount - COALESCE(pp.paid, 0) AS remaining,
-           o.billing_cycle, o.title AS order_title, s.name AS service_name,
+           o.billing_cycle, o.installments, o.title AS order_title, s.name AS service_name,
            c.company_name, c.contact_name, c.phone
     FROM dues d
     JOIN orders o ON o.id = d.order_id
@@ -245,6 +277,9 @@ function due_label(array $d): string
 {
     if ((int) $d['period_no'] === 0) {
         return 'Kurulum ücreti';
+    }
+    if ($d['billing_cycle'] === 'installment') {
+        return $d['period_no'] . '/' . (int) $d['installments'] . '. taksit';
     }
     if ($d['billing_cycle'] === 'monthly') {
         $ts = strtotime($d['due_date']);

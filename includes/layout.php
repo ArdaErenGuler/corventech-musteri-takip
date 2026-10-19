@@ -351,7 +351,7 @@ function payment_item(array $p, bool $showCustomer = true): string
 }
 
 const PAYMENTS_SELECT = "
-    SELECT p.*, c.company_name, c.contact_name, o.title AS order_title, o.billing_cycle, s.name AS service_name, d.period_no, d.due_date
+    SELECT p.*, c.company_name, c.contact_name, o.title AS order_title, o.billing_cycle, o.installments, s.name AS service_name, d.period_no, d.due_date
     FROM payments p
     JOIN customers c ON c.id = p.customer_id
     LEFT JOIN dues d ON d.id = p.due_id

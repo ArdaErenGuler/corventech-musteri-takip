@@ -43,7 +43,7 @@ $rate = q_one(
 );
 $collectionRate = $rate['due'] > 0 ? $rate['paid'] / $rate['due'] * 100 : null;
 $mrr = monthly_recurring_revenue();
-$payingCustomers = (int) q_val("SELECT COUNT(DISTINCT customer_id) FROM orders WHERE status = 'active' AND billing_cycle <> 'one_time'");
+$payingCustomers = (int) q_val("SELECT COUNT(DISTINCT customer_id) FROM orders WHERE status = 'active' AND billing_cycle IN ('monthly', 'yearly')");
 
 // Bekleyen alacaklar
 $balances = array_filter(all_customer_balances(), fn($b) => $b > 0.009);

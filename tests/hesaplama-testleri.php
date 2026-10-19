@@ -39,6 +39,14 @@ check('aylık 2. dönem', period_due_date('2026-08-31', 'monthly', 2), '2026-09-
 check('aylık 3. dönem (kaymaz)', period_due_date('2026-08-31', 'monthly', 3), '2026-10-31');
 check('yıllık 2. dönem', period_due_date('2026-10-18', 'yearly', 2), '2027-10-18');
 
+echo "Taksit bölme\n";
+check('10.500 / 3', installment_amounts(10500, 3), [3500.0, 3500.0, 3500.0]);
+check('12.000 / 3', installment_amounts(12000, 3), [4000.0, 4000.0, 4000.0]);
+check('10.000 / 3 (kuruş son taksitte)', installment_amounts(10000, 3), [3333.33, 3333.33, 3333.34]);
+check('toplam korunur', round(array_sum(installment_amounts(9999.99, 7)), 2), 9999.99);
+check('tek taksit', installment_amounts(500, 1), [500.0]);
+check('taksit etiketi', due_label(['period_no' => 2, 'billing_cycle' => 'installment', 'installments' => 3, 'due_date' => '2026-11-19']), '2/3. taksit');
+
 echo "Türkçe tutar okuma\n";
 check('14.000', parse_money('14.000'), 14000.0);
 check('1.250,50', parse_money('1.250,50'), 1250.5);

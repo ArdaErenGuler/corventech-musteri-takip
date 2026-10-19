@@ -49,8 +49,8 @@ if (is_post()) {
             if ($order['status'] !== 'active' && $status === 'active') {
                 $syncFrom = today();   // Devam ettirilen sipariş: aradaki dönemler borç yazılmaz
             }
-            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, setup_fee = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [
-                $customerId, $d['service_id'], $d['title'] ?: null, $d['billing_cycle'], $d['price'], $d['setup_fee'],
+            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, installments = ?, setup_fee = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [
+                $customerId, $d['service_id'], $d['title'] ?: null, $d['billing_cycle'], $d['price'], $d['installments'], $d['setup_fee'],
                 $d['start_date'], $d['first_due_date'], $d['end_date'], $syncFrom, $status, $d['notes'] ?: null, $id,
             ]);
             if ($customerId !== (int) $order['customer_id']) {
@@ -65,32 +65,60 @@ if (is_post()) {
             flash('success', 'Sipariş güncellendi; ödeme planı yeniden hesaplandı.');
         } else {
             $id = create_order(['customer_id' => $customerId] + $d, (int) $user['id']);
-            flash('success', 'Hizmet eklendi ve ödeme planı oluşturuldu.');
+            $renewOf = input_int('renew_of');
+            $old = $renewOf ? q_one('SELECT * FROM orders WHERE id = ? AND customer_id = ? AND id <> ?', [$renewOf, $customerId, $id]) : null;
+            if ($old && $old['status'] === 'active') {
+                q("UPDATE orders SET status = 'completed' WHERE id = ?", [$old['id']]);
+                // Taksitli / tek seferlik işte kalan taksitler borç olarak durur; aylık/yıllıkta ileri tarihli ödenmemiş dönemler kalkar
+                if (!in_array($old['billing_cycle'], ['installment', 'one_time'], true)) {
+                    trim_future_dues((int) $old['id']);
+                }
+            }
+            flash('success', $old ? 'Yeni dönem oluşturuldu; önceki iş tamamlandı olarak işaretlendi.' : 'Hizmet eklendi ve ödeme planı oluşturuldu.');
         }
         redirect('siparis-form.php?id=' . $id . '#plan');
     }
 }
 
-$o = $order ?? [
-    'customer_id'    => input_int('customer_id'),
-    'billing_cycle'  => 'monthly',
+// Yenileme (?yenile=ID): aynı müşteri / paket / ödeme tipi önceden dolu gelir; yeni fiyatı siz yazarsınız
+$renewFrom = !$order && input_int('yenile') ? q_one('SELECT * FROM orders WHERE id = ?', [input_int('yenile')]) : null;
+$o = $order ?? ($renewFrom ? [
+    'customer_id'    => $renewFrom['customer_id'],
+    'service_id'     => $renewFrom['service_id'],
+    'title'          => $renewFrom['title'],
+    'billing_cycle'  => $renewFrom['billing_cycle'],
+    'installments'   => $renewFrom['installments'],
     'start_date'     => today(),
     'first_due_date' => today(),
     'status'         => 'active',
     'setup_fee'      => 0,
-];
+] : [
+    'customer_id'    => input_int('customer_id'),
+    'billing_cycle'  => 'installment',
+    'start_date'     => today(),
+    'first_due_date' => today(),
+    'status'         => 'active',
+    'setup_fee'      => 0,
+]);
 $val = fn($k) => e(old($k, $o[$k] ?? ''));
 
 $customers = q_all("SELECT id, company_name, contact_name FROM customers ORDER BY status = 'passive', COALESCE(NULLIF(company_name, ''), contact_name)");
 $services = q_all('SELECT * FROM services WHERE is_active = 1 OR id = ? ORDER BY kind, sort_order, name', [$o['service_id'] ?? 0]);
 $dues = $order ? q_all(DUES_SELECT . ' WHERE d.order_id = ? ORDER BY d.period_no', [$id]) : [];
 $selectedCustomer = (int) old('customer_id', $o['customer_id'] ?? '');
-$back = $order ? 'musteri.php?id=' . $order['customer_id'] : ($selectedCustomer ? 'musteri.php?id=' . $selectedCustomer : 'siparisler.php');
+$back = $renewFrom ? 'siparis-form.php?id=' . $renewFrom['id'] : ($order ? 'musteri.php?id=' . $order['customer_id'] : ($selectedCustomer ? 'musteri.php?id=' . $selectedCustomer : 'siparisler.php'));
 
-layout_start($order ? 'Sipariş' : 'Hizmet ekle', 'orders', ['back' => $back, 'fab' => false]);
+layout_start($order ? 'Sipariş' : ($renewFrom ? 'Yeni dönem' : 'Hizmet ekle'), 'orders', ['back' => $back, 'fab' => false]);
 ?>
+<?php if ($renewFrom): ?>
+    <div class="callout mb"><?= icon('refresh') ?>
+        <div><b>Yeni dönem</b> · önceki fiyat <?= money($renewFrom['price']) ?><?= $renewFrom['billing_cycle'] === 'installment' ? ' · ' . (int) $renewFrom['installments'] . ' taksit' : '' ?><br>
+            <span class="muted">Yeni fiyatı ve taksit sayısını aşağıya yazın. Kaydedince önceki iş tamamlandı olur.</span></div>
+    </div>
+<?php endif; ?>
 <form method="post" class="card form" data-order-form novalidate>
     <?= csrf_field() ?>
+    <?php if ($renewFrom): ?><input type="hidden" name="renew_of" value="<?= (int) $renewFrom['id'] ?>"><?php endif; ?>
     <div class="form-grid">
         <div class="field span-2<?= isset($errors['customer_id']) ? ' has-error' : '' ?>">
             <label for="customer_id">Müşteri <span class="req">*</span></label>
@@ -132,7 +160,10 @@ layout_start($order ? 'Sipariş' : 'Hizmet ekle', 'orders', ['back' => $back, 'f
 <?php if ($order): ?>
     <div class="section-head" id="plan">
         <h2>Ödeme planı</h2>
-        <span class="muted small"><?= count($dues) ?> dönem</span>
+        <div class="row">
+            <span class="muted small"><?= count($dues) ?> dönem</span>
+            <a class="btn sm soft" href="siparis-form.php?yenile=<?= (int) $order['id'] ?>"><?= icon('refresh') ?>Yeni dönem için yenile</a>
+        </div>
     </div>
     <?php if ($dues): ?>
         <div class="list">

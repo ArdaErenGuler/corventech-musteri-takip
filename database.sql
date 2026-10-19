@@ -97,8 +97,9 @@ CREATE TABLE orders (
     customer_id    INT UNSIGNED NOT NULL,
     service_id     INT UNSIGNED NULL,
     title          VARCHAR(150) NULL,
-    billing_cycle  ENUM('one_time','monthly','yearly') NOT NULL,
-    price          DECIMAL(12,2) NOT NULL,
+    billing_cycle  ENUM('one_time','monthly','yearly','installment') NOT NULL,
+    price          DECIMAL(12,2) NOT NULL COMMENT 'Aylık/yıllık/tek seferlik tutar; taksitli işte TOPLAM tutar',
+    installments   TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Taksitli işlerde taksit sayısı',
     setup_fee      DECIMAL(12,2) NOT NULL DEFAULT 0,
     start_date     DATE NOT NULL,
     first_due_date DATE NOT NULL,
@@ -233,7 +234,7 @@ CREATE TABLE transactions (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
-('db_version', '5'),
+('db_version', '6'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------

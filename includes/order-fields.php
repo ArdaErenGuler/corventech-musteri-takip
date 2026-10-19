@@ -34,7 +34,13 @@ $ov = fn($k) => e(old($k, $o[$k] ?? ''));
     <div class="input-money"><input id="price" name="price" inputmode="decimal" value="<?= e(old('price', money_input($o['price'] ?? ''))) ?>" placeholder="Örn. 7.500"></div>
     <?= field_error($errors, 'price') ?>
 </div>
-<div class="field<?= isset($errors['setup_fee']) ? ' has-error' : '' ?>" data-recurring-only>
+<div class="field<?= isset($errors['installments']) ? ' has-error' : '' ?>" data-show-for="installment">
+    <label for="installments">Taksit sayısı</label>
+    <input id="installments" name="installments" type="number" inputmode="numeric" min="2" max="36" value="<?= e(old('installments', ($o['installments'] ?? 1) > 1 ? $o['installments'] : 3)) ?>">
+    <span class="hint" data-installment-preview></span>
+    <?= field_error($errors, 'installments') ?>
+</div>
+<div class="field<?= isset($errors['setup_fee']) ? ' has-error' : '' ?>" data-show-for="monthly,yearly">
     <label for="setup_fee">Kurulum ücreti <span class="dim">(opsiyonel)</span></label>
     <div class="input-money"><input id="setup_fee" name="setup_fee" inputmode="decimal" value="<?= e(old('setup_fee', money_input(($o['setup_fee'] ?? 0) ?: ''))) ?>" placeholder="0"></div>
     <span class="hint">Başlangıç tarihinde bir kez alınır.</span>
@@ -45,12 +51,12 @@ $ov = fn($k) => e(old($k, $o[$k] ?? ''));
     <input id="start_date" name="start_date" type="date" value="<?= $ov('start_date') ?>">
     <?= field_error($errors, 'start_date') ?>
 </div>
-<div class="field" data-recurring-only>
-    <label for="first_due_date">İlk ödeme tarihi</label>
+<div class="field" data-show-for="monthly,yearly,installment">
+    <label for="first_due_date" data-first-due-label>İlk ödeme tarihi</label>
     <input id="first_due_date" name="first_due_date" type="date" value="<?= $ov('first_due_date') ?>">
-    <span class="hint">Sonraki ödemeler her ay / her yıl aynı güne yazılır.</span>
+    <span class="hint">Sonraki ödemeler her ay / her yıl aynı güne yazılır (taksitlerde her ay).</span>
 </div>
-<div class="field<?= isset($errors['end_date']) ? ' has-error' : '' ?>" data-recurring-only>
+<div class="field<?= isset($errors['end_date']) ? ' has-error' : '' ?>" data-show-for="monthly,yearly">
     <label for="end_date">Bitiş tarihi <span class="dim">(opsiyonel)</span></label>
     <input id="end_date" name="end_date" type="date" value="<?= $ov('end_date') ?>">
     <?= field_error($errors, 'end_date') ?>

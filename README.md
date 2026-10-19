@@ -9,7 +9,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 - **Dashboard:** aktif müşteri, bu ay tahsilat, gecikmiş ödemeler, yaklaşan ödemeler, açık görevler
 - **Müşteriler:** arama, durum/sektör/borçlu filtresi, tek dokunuşla arama ve WhatsApp; detay sayfasında hizmetler, ödeme planı, ödeme geçmişi, kalan borç, görevler ve görüşme notları
 - **Sosyal medya takvimi:** aylık takvim; güne dokunup müşteri eklenir, paylaşınca işaretlenir; paylaşım günü gelince panelde şerit + bildirim
-- **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
+- **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **taksitli / tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
 - **Ödemeler:** tahsilat kaydı; hangi dönem için alındığı ve kalan tutar otomatik gelir
 - **Yenilemeler:** gecikmiş, bugün, bu hafta ve sonraki 30 günün ödemeleri; WhatsApp hatırlatma mesajı; yıllık yenileme takvimi
 - **Görevler:** müşteriye bağlı görevler, sorumlu kişi, son tarih, öncelik
@@ -22,6 +22,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 
 Yeni müşteri eklerken (ya da sonradan müşteri sayfasından) hizmet, ödeme tipi, tutar ve **ilk ödeme tarihi** girilir. Panel sonraki ödeme tarihlerini kendisi hesaplar:
 
+- **Taksitli:** toplam tutar + taksit sayısı girilir (10.500 ₺ ÷ 3 = 3 × 3.500 ₺); taksitler ilk taksit tarihinden itibaren her ay aynı güne yazılır, kuruş farkı son taksitte kapanır. Ertesi yıl işteki **Yeni dönem için yenile** butonuyla yeni fiyat ve taksit sayısıyla yeni iş açılır; önceki iş tamamlandı olur, kalan taksitleri borç olarak durur. **Yenilemeler** sayfasındaki yenileme takvimi taksitli işlerin yıl dönümünü de gösterir.
 - **Aylık:** her ay aynı gün (31'i olmayan aylarda ayın son günü)
 - **Yıllık:** her yıl aynı gün
 - **Kurulum ücreti** varsa başlangıç tarihinde bir kez eklenir
@@ -65,6 +66,7 @@ Yeni dosyaları yüklemeniz yeterli. Panel ilk açıldığında `migrations/` kl
 - `003_is_bazinda_pay.sql` — iş bazında pay seçimi, gelir/giderde kasa, düzenli (aylık/yıllık) gelir/giderler
 - `004_oturumlar.sql` — oturumlar veritabanında (30 gün; telefonda tekrar tekrar giriş istemez)
 - `005_ortak_kasa.sql` — müşteri sahibi, iş payı ve kasa seçimi kaldırıldı (her şey ortak; şirket kasası)
+- `006_taksit.sql` — taksitli ödeme (toplam fiyat + taksit sayısı)
 
 Yeni bir güncelleme eklerken: `migrations/005_....sql` oluşturun, `includes/migrate.php` içindeki `DB_VERSION`'u artırın ve `database.sql`'deki `db_version` değerini güncelleyin.
 

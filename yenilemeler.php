@@ -56,11 +56,18 @@ $totals = q_one(
     [$window, $window]
 );
 
-// Yıllık yenileme takvimi: aktif yıllık siparişlerin bir sonraki yenileme tarihi (dönem henüz oluşmamış olsa da)
+// Yenileme takvimi: yıllık abonelikler + taksitli işler (taksitli işte yıl dönümünde fiyat yenilenir).
+// Taksitli işlerde aynı müşteri/paketin en son işi esas alınır; yıl dönümü = başlangıç tarihinin sonraki yıldönümü.
 $yearly = [];
+$latest = [];
 foreach (q_all("SELECT o.*, c.company_name, c.contact_name, c.phone, s.name AS service_name
                 FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN services s ON s.id = o.service_id
-                WHERE o.status = 'active' AND o.billing_cycle = 'yearly'") as $o) {
+                WHERE (o.status = 'active' AND o.billing_cycle = 'yearly') OR (o.status IN ('active', 'completed') AND o.billing_cycle = 'installment')
+                ORDER BY o.start_date") as $o) {
+    if ($o['billing_cycle'] === 'installment') {
+        $latest[$o['customer_id'] . '|' . ($o['service_id'] ?? 0) . '|' . ($o['title'] ?? '')] = $o;   // sonraki (daha yeni) iş öncekinin yerine geçer
+        continue;
+    }
     for ($n = 1; $n < 200; $n++) {
         $date = period_due_date($o['first_due_date'], 'yearly', $n);
         if ($date >= today()) {
@@ -73,7 +80,16 @@ foreach (q_all("SELECT o.*, c.company_name, c.contact_name, c.phone, s.name AS s
     $o['next_renewal'] = $date;
     $yearly[] = $o;
 }
-usort($yearly, fn($a, $b) => strcmp($a['next_renewal'], $b['next_renewal']));
+foreach ($latest as $o) {
+    for ($n = 1; $n < 200; $n++) {
+        $date = add_months_clamped($o['start_date'], $n * 12);
+        if ($date >= today()) {
+            break;
+        }
+    }
+    $o['next_renewal'] = $date;
+    $yearly[] = $o;
+}usort($yearly, fn($a, $b) => strcmp($a['next_renewal'], $b['next_renewal']));
 
 layout_start('Yenilemeler', 'renewals', ['fab' => ['href' => 'odeme-form.php', 'label' => 'Ödeme al']]);
 ?>
@@ -94,7 +110,7 @@ layout_start('Yenilemeler', 'renewals', ['fab' => ['href' => 'odeme-form.php', '
         <div class="stat-sub"><?= (int) $totals['month_n'] ?> ödeme</div>
     </a>
     <a class="stat" href="#yillik">
-        <div class="stat-label"><?= icon('refresh') ?>Yıllık yenileme</div>
+        <div class="stat-label"><?= icon('refresh') ?>Yenileme</div>
         <div class="stat-value"><?= count($yearly) ?></div>
         <div class="stat-sub"><?= $yearly ? 'İlki ' . date_tr($yearly[0]['next_renewal']) : 'Yok' ?></div>
     </a>
@@ -132,13 +148,13 @@ layout_start('Yenilemeler', 'renewals', ['fab' => ['href' => 'odeme-form.php', '
 <?php endforeach; ?>
 
 <div class="section-head" id="yillik">
-    <h2>Yıllık yenileme takvimi</h2>
+    <h2>Yenileme takvimi</h2>
 </div>
 <?php if ($yearly): ?>
     <div class="list">
         <?php foreach ($yearly as $o):
             $days = days_until($o['next_renewal']); ?>
-            <a class="item" href="siparis-form.php?id=<?= (int) $o['id'] ?>#plan">
+            <a class="item" href="<?= $o['billing_cycle'] === 'installment' ? 'siparis-form.php?yenile=' . (int) $o['id'] : 'siparis-form.php?id=' . (int) $o['id'] . '#plan' ?>">
                 <span class="avatar"><?= icon('refresh') ?></span>
                 <div class="item-main">
                     <span class="item-title"><?= e(customer_display_name($o)) ?></span>
@@ -146,7 +162,7 @@ layout_start('Yenilemeler', 'renewals', ['fab' => ['href' => 'odeme-form.php', '
                     <div class="item-sub"><span class="<?= $days <= 7 ? 'text-warning' : '' ?>"><?= icon('calendar') ?><?= date_tr($o['next_renewal']) ?> · <?= e(relative_due($o['next_renewal'])) ?></span></div>
                 </div>
                 <div class="item-side">
-                    <span class="item-amount"><?= money($o['price']) ?><small>/yıl</small></span>
+                    <span class="item-amount"><?= money($o['price']) ?><small><?= $o['billing_cycle'] === 'installment' ? (int) $o['installments'] . ' taksit · yenile' : '/yıl' ?></small></span>
                 </div>
             </a>
         <?php endforeach; ?>

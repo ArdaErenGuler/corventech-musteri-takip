@@ -136,13 +136,47 @@
             var c = cycles.filter(function (r) { return r.checked; })[0];
             return c ? c.value : 'monthly';
         }
+        // "1.250,50" / "10.500" / "10500" → sayı (sunucudaki parse_money ile aynı kural)
+        function parseMoney(s) {
+            s = String(s || '').replace(/[\s₺ ]/g, '');
+            if (!s) return null;
+            if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+            else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+            var n = parseFloat(s);
+            return isNaN(n) ? null : Math.round(n * 100) / 100;
+        }
+        function tl(n) { return n.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₺'; }
+
+        // Taksitli: "3 taksit × 3.500 ₺" gibi canlı özet (kuruş farkı son taksitte)
+        function updateInstallmentPreview() {
+            var out = $('[data-installment-preview]', orderForm);
+            if (!out) return;
+            var total = parseMoney($('[name="price"]', orderForm).value);
+            var n = parseInt($('[name="installments"]', orderForm).value, 10);
+            if (cycleValue() !== 'installment' || total === null || !n || n < 2) { out.textContent = ''; return; }
+            var each = Math.round(total / n * 100) / 100;
+            var last = Math.round((total - each * (n - 1)) * 100) / 100;
+            out.textContent = last === each
+                ? n + ' taksit × ' + tl(each) + ' = ' + tl(total)
+                : (n - 1) + ' taksit × ' + tl(each) + ' + son taksit ' + tl(last) + ' = ' + tl(total);
+        }
+
         function syncCycle() {
-            var recurring = cycleValue() !== 'one_time';
-            $$('[data-recurring-only]', orderForm).forEach(function (el) { el.hidden = !recurring; });
+            var cycle = cycleValue();
+            $$('[data-show-for]', orderForm).forEach(function (el) {
+                el.hidden = el.getAttribute('data-show-for').split(',').indexOf(cycle) < 0;
+            });
             var label = $('[data-price-label]', orderForm);
-            if (label) label.textContent = { one_time: 'Tutar', monthly: 'Aylık tutar', yearly: 'Yıllık tutar' }[cycleValue()];
+            if (label) label.textContent = { one_time: 'Tutar', monthly: 'Aylık tutar', yearly: 'Yıllık tutar', installment: 'Toplam tutar' }[cycle];
+            var fdl = $('[data-first-due-label]', orderForm);
+            if (fdl) fdl.textContent = cycle === 'installment' ? 'İlk taksit tarihi' : 'İlk ödeme tarihi';
+            updateInstallmentPreview();
         }
         cycles.forEach(function (r) { r.addEventListener('change', syncCycle); });
+        ['price', 'installments'].forEach(function (n) {
+            var el = $('[name="' + n + '"]', orderForm);
+            if (el) el.addEventListener('input', updateInstallmentPreview);
+        });
         syncCycle();
         if (firstDue && start) {
             firstDue.addEventListener('input', function () { firstDueTouched = true; });

@@ -94,7 +94,7 @@ layout_start('Siparişler', 'orders', ['fab' => ['href' => 'siparis-form.php', '
                     </div>
                 </div>
                 <div class="item-side">
-                    <span class="item-amount"><?= money($o['price']) ?><?= $o['billing_cycle'] === 'monthly' ? '<small>/ay</small>' : ($o['billing_cycle'] === 'yearly' ? '<small>/yıl</small>' : '') ?></span>
+                    <span class="item-amount"><?= money($o['price']) ?><?= $o['billing_cycle'] === 'monthly' ? '<small>/ay</small>' : ($o['billing_cycle'] === 'yearly' ? '<small>/yıl</small>' : ($o['billing_cycle'] === 'installment' ? '<small>' . (int) $o['installments'] . ' taksit</small>' : '')) ?></span>
                     <?= order_status_badge($o['status']) ?>
                 </div>
             </a>

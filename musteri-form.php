@@ -82,7 +82,7 @@ if (is_post()) {
 }
 
 $c = $customer ?? ['status' => 'active', 'registered_at' => today()];
-$o = ['billing_cycle' => 'monthly', 'start_date' => today(), 'first_due_date' => today()];
+$o = ['billing_cycle' => 'installment', 'start_date' => today(), 'first_due_date' => today()];
 $services = q_all('SELECT id, name FROM services WHERE is_active = 1 ORDER BY kind, sort_order, name');
 $val = fn($k) => e(old($k, $c[$k] ?? ''));
 $sectors = q("SELECT DISTINCT sector FROM customers WHERE sector IS NOT NULL AND sector <> '' ORDER BY sector")->fetchAll(PDO::FETCH_COLUMN);
