@@ -9,7 +9,7 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 - **Dashboard:** aktif müşteri, bu ay tahsilat, gecikmiş ödemeler, yaklaşan ödemeler, açık görevler
 - **Müşteriler:** arama, durum/sektör/borçlu filtresi, tek dokunuşla arama ve WhatsApp; detay sayfasında hizmetler, ödeme planı, ödeme geçmişi, kalan borç, görevler ve görüşme notları
 - **Sosyal medya takvimi:** aylık takvim; güne dokunup müşteri eklenir, paylaşınca işaretlenir; paylaşım günü gelince panelde şerit + bildirim
-- **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **taksitli / tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
+- **Siparişler:** müşteriye satılan hizmet; hizmet adı ve fiyat her müşteri için **elle girilir**. **Her hizmet ayrı kayıttır** (Web Sitesi, İşletme Paneli, Sosyal Medya ayrı eklenir, `+` ile birleştirilemez); bir müşterinin birden çok hizmeti olabilir ve ödemeler hizmet bazında takip edilir, fazla ödeme başka hizmetin borcuna geçmez; **taksitli / tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
 - **Ödemeler:** tahsilat kaydı; hangi dönem için alındığı ve kalan tutar otomatik gelir
 - **Yenilemeler:** gecikmiş, bugün, bu hafta ve sonraki 30 günün ödemeleri; WhatsApp hatırlatma mesajı; yıllık yenileme takvimi
 - **Görevler:** müşteriye bağlı görevler, sorumlu kişi, son tarih, öncelik
@@ -22,7 +22,6 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 
 Yeni müşteri eklerken (ya da sonradan müşteri sayfasından) hizmet, ödeme tipi, tutar ve **ilk ödeme tarihi** girilir. Panel sonraki ödeme tarihlerini kendisi hesaplar:
 
-- **Paket kuralları:** Sosyal Medya yalnızca **aylık**; Kurumsal Web Sitesi ve İşletme Paneli **yıllık ya da taksitli**; kombo paketlerde ve özel hizmetlerde kısıtlama yok. Paket seçilince form yalnızca izinli ödeme tiplerini gösterir, sunucu da denetler (`services.allowed_cycles`).
 - **Taksitli:** toplam tutar + taksit sayısı girilir (10.500 ₺ ÷ 3 = 3 × 3.500 ₺); taksitler ilk taksit tarihinden itibaren her ay aynı güne yazılır, kuruş farkı son taksitte kapanır. Ertesi yıl işteki **Yeni dönem için yenile** butonuyla yeni fiyat ve taksit sayısıyla yeni iş açılır; önceki iş tamamlandı olur, kalan taksitleri borç olarak durur. **Yenilemeler** sayfasındaki yenileme takvimi taksitli işlerin yıl dönümünü de gösterir.
 - **Aylık:** her ay aynı gün (31'i olmayan aylarda ayın son günü)
 - **Yıllık:** her yıl aynı gün
@@ -37,7 +36,7 @@ Dönemler, tarihi yaklaştıkça (varsayılan 60 gün önceden) otomatik oluşur
 ### 1. Paylaşımlı hosting (cPanel vb.)
 
 1. Hosting panelinden bir **MySQL veritabanı** ve kullanıcısı oluşturun, karakter seti `utf8mb4` olsun.
-2. phpMyAdmin'de veritabanını seçip **İçe Aktar** ile `database.sql` dosyasını yükleyin (tablolar + 6 paket, müşteri yok).
+2. phpMyAdmin'de veritabanını seçip **İçe Aktar** ile `database.sql` dosyasını yükleyin (yalnızca tablolar, müşteri yok).
    > Bu dosya tabloları silip yeniden oluşturur; yalnızca ilk kurulumda kullanın. `ornek-veri.sql` yalnızca deneme içindir, **canlıya yüklemeyin**.
 3. Tüm dosyaları FTP / Dosya Yöneticisi ile `public_html` içine yükleyin (veya `public_html/panel` gibi bir alt klasöre).
 4. Aynı klasörde `config.local.php` oluşturup veritabanı bilgilerini ve bir **kurulum anahtarı** yazın (aşağıdaki örnek).
@@ -68,7 +67,8 @@ Yeni dosyaları yüklemeniz yeterli. Panel ilk açıldığında `migrations/` kl
 - `004_oturumlar.sql` — oturumlar veritabanında (30 gün; telefonda tekrar tekrar giriş istemez)
 - `005_ortak_kasa.sql` — müşteri sahibi, iş payı ve kasa seçimi kaldırıldı (her şey ortak; şirket kasası)
 - `006_taksit.sql` — taksitli ödeme (toplam fiyat + taksit sayısı)
-- `007_paket_odeme_tipleri.sql` — paketlere göre izin verilen ödeme tipleri
+- `007_paket_odeme_tipleri.sql` — (008 ile geçersiz kılındı)
+- `008_paketler_kaldirildi.sql` — paketler kaldırıldı; hizmet adı her işte elle yazılır (eski paket adları işlere aktarılır)
 
 Yeni bir güncelleme eklerken: `migrations/005_....sql` oluşturun, `includes/migrate.php` içindeki `DB_VERSION`'u artırın ve `database.sql`'deki `db_version` değerini güncelleyin.
 
@@ -131,6 +131,6 @@ Son yedekten 7 gün geçince her sayfada ve menüde hatırlatma çıkar. Dosyay�
 ├── migrations/         Kurulu panel için veritabanı güncellemeleri
 ├── tests/              Hesaplama testleri (php tests/hesaplama-testleri.php)
 ├── config.php          Ayarlar
-├── database.sql        Tablolar + 6 paket (canlı kurulum)
+├── database.sql        Tablolar (canlı kurulum)
 └── ornek-veri.sql      Deneme verisi (canlıya yüklemeyin)
 ```

@@ -25,11 +25,13 @@ $name = customer_display_name($c);
 $balance = customer_balance($id);
 
 $orders = q_all(
-    "SELECT o.*, s.name AS service_name,
+    "SELECT o.*,
         (SELECT MIN(d.due_date) FROM dues d
           LEFT JOIN (SELECT due_id, SUM(amount) paid FROM payments GROUP BY due_id) pp ON pp.due_id = d.id
-          WHERE d.order_id = o.id AND d.status = 'open' AND d.amount - COALESCE(pp.paid, 0) > 0.009) AS next_due
-     FROM orders o LEFT JOIN services s ON s.id = o.service_id
+          WHERE d.order_id = o.id AND d.status = 'open' AND d.amount - COALESCE(pp.paid, 0) > 0.009) AS next_due,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN dues d ON d.id = p.due_id WHERE d.order_id = o.id) AS order_paid,
+        (SELECT COALESCE(SUM(d.amount), 0) FROM dues d WHERE d.order_id = o.id AND d.status = 'open') AS order_total
+     FROM orders o
      WHERE o.customer_id = ?
      ORDER BY FIELD(o.status, 'active', 'paused', 'completed', 'cancelled'), o.start_date DESC",
     [$id]
@@ -129,6 +131,11 @@ layout_start($name, 'customers', [
                             <?php if ($o['next_due']): ?>
                                 <span class="<?= $o['next_due'] < today() ? 'text-critical' : '' ?>">Sonraki ödeme <?= date_tr($o['next_due']) ?></span>
                             <?php endif; ?>
+                        </div>
+                        <div class="item-sub">
+                            <span class="text-good">Ödenen <?= money($o['order_paid']) ?></span>
+                            <?php $rest = max(0, (float) $o['order_total'] - (float) $o['order_paid']); ?>
+                            <span class="<?= $rest > 0.009 ? '' : 'text-good' ?>">Bekleyen <?= money($rest) ?></span>
                         </div>
                     </div>
                     <div class="item-side">

@@ -19,15 +19,15 @@ if (isset(CYCLE_LABELS[$cycle])) {
     $params[] = $cycle;
 }
 if ($search !== '') {
-    $where[] = '(c.company_name LIKE ? OR c.contact_name LIKE ? OR s.name LIKE ? OR o.title LIKE ?)';
-    array_push($params, ...array_fill(0, 4, '%' . $search . '%'));
+    $where[] = '(c.company_name LIKE ? OR c.contact_name LIKE ? OR o.title LIKE ?)';
+    array_push($params, ...array_fill(0, 3, '%' . $search . '%'));
 }
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-$from = 'FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN services s ON s.id = o.service_id';
+$from = 'FROM orders o JOIN customers c ON c.id = o.customer_id';
 
 $total = (int) q_val("SELECT COUNT(*) $from $whereSql", $params);
 $orders = q_all(
-    "SELECT o.*, c.company_name, c.contact_name, s.name AS service_name,
+    "SELECT o.*, c.company_name, c.contact_name,
         (SELECT MIN(d.due_date) FROM dues d
           LEFT JOIN (SELECT due_id, SUM(amount) paid FROM payments GROUP BY due_id) pp ON pp.due_id = d.id
           WHERE d.order_id = o.id AND d.status = 'open' AND d.amount - COALESCE(pp.paid, 0) > 0.009) AS next_due

@@ -29,7 +29,16 @@ if (is_post()) {
 
     if (!$customerId || !q_val('SELECT id FROM customers WHERE id = ?', [$customerId])) $errors['customer_id'] = 'Müşteri seçin.';
     if ($dueId && (int) q_val('SELECT customer_id FROM dues WHERE id = ?', [$dueId]) !== $customerId) $errors['due_id'] = 'Seçilen dönem bu müşteriye ait değil.';
-    if ($amount === null || $amount <= 0) $errors['amount'] = 'Tutar yazın.';
+    if (!$payment && !$dueId && !isset($errors['customer_id'])) $errors['due_id'] = 'Hangi hizmetin hangi ödemesi olduğunu seçin (bekleyen ödeme yoksa önce hizmeti ekleyin).';
+    if ($amount === null || $amount <= 0) {
+        $errors['amount'] = 'Tutar yazın.';
+    } elseif (!$payment && $dueId && !isset($errors['due_id'])) {
+        // Bir hizmetin ödemesi başka hizmete taşmasın: tutar, seçilen hizmetin kalan borcunu aşamaz
+        $orderLeft = (float) q_val('SELECT COALESCE(SUM(remaining), 0) FROM (' . DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.order_id = (SELECT order_id FROM dues WHERE id = ?)) x', [$dueId]);
+        if ($amount > $orderLeft + 0.009) {
+            $errors['amount'] = 'Bu hizmetin kalan borcu ' . money($orderLeft) . '. Fazlası kaydedilemez.';
+        }
+    }
     if (!$paidAt) $errors['paid_at'] = 'Tarih seçin.';
     if ($paidAt && $paidAt > today()) $errors['paid_at'] = 'İleri tarihli ödeme girilemez.';
     if (!isset(PAYMENT_METHODS[$method])) $errors['method'] = 'Ödeme yöntemi seçin.';
@@ -101,14 +110,14 @@ layout_start($payment ? 'Ödemeyi düzenle' : 'Ödeme al', 'payments', ['back' =
         <div class="field<?= isset($errors['due_id']) ? ' has-error' : '' ?>">
             <label for="due_id">Hangi ödeme için?</label>
             <select id="due_id" name="due_id">
-                <option value="">Döneme bağlama (genel ödeme)</option>
+                <option value=""><?= $payment ? 'Döneme bağlı değil (eski genel ödeme)' : 'Ödeme seçin…' ?></option>
                 <?php foreach ($dues as $d): ?>
                     <option value="<?= (int) $d['id'] ?>" data-remaining="<?= e(money_input($d['remaining'])) ?>"<?= (int) $d['id'] === $selectedDue ? ' selected' : '' ?>>
                         <?= e(order_name($d) . ' · ' . due_label($d) . ' · ' . date_tr($d['due_date']) . ' · ' . money($d['remaining'])) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <span class="hint">Kalan tutar otomatik yazılır. Daha fazlası girilirse fazlası sonraki aylara dağıtılır.</span>
+            <span class="hint">Hizmet ve dönem seçilince kalan tutar otomatik yazılır. Aynı hizmetin birkaç ayını birden ödüyorsa toplamı yazın, sonraki dönemlere kendisi dağıtılır.</span>
             <?= field_error($errors, 'due_id') ?>
         </div>
         <div class="field<?= isset($errors['amount']) ? ' has-error' : '' ?>">

@@ -60,12 +60,12 @@ $totals = q_one(
 // Taksitli işlerde aynı müşteri/paketin en son işi esas alınır; yıl dönümü = başlangıç tarihinin sonraki yıldönümü.
 $yearly = [];
 $latest = [];
-foreach (q_all("SELECT o.*, c.company_name, c.contact_name, c.phone, s.name AS service_name
-                FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN services s ON s.id = o.service_id
+foreach (q_all("SELECT o.*, c.company_name, c.contact_name, c.phone
+                FROM orders o JOIN customers c ON c.id = o.customer_id
                 WHERE (o.status = 'active' AND o.billing_cycle = 'yearly') OR (o.status IN ('active', 'completed') AND o.billing_cycle = 'installment')
                 ORDER BY o.start_date") as $o) {
     if ($o['billing_cycle'] === 'installment') {
-        $latest[$o['customer_id'] . '|' . ($o['service_id'] ?? 0) . '|' . ($o['title'] ?? '')] = $o;   // sonraki (daha yeni) iş öncekinin yerine geçer
+        $latest[$o['customer_id'] . '|' . ($o['title'] ?? '')] = $o;   // sonraki (daha yeni) iş öncekinin yerine geçer
         continue;
     }
     for ($n = 1; $n < 200; $n++) {

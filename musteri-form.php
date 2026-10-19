@@ -51,7 +51,7 @@ if (is_post()) {
     }
 
     // Yeni müşteriyle birlikte ilk hizmet (paket veya tutar girildiyse)
-    $withOrder = !$customer && (input('service_id') !== '' || input('title') !== '' || input('price') !== '');
+    $withOrder = !$customer && (input('title') !== '' || input('price') !== '');
     $order = null;
     if ($withOrder) {
         [$order, $orderErrors] = validate_order_input();
@@ -83,7 +83,7 @@ if (is_post()) {
 
 $c = $customer ?? ['status' => 'active', 'registered_at' => today()];
 $o = ['billing_cycle' => 'installment', 'start_date' => today(), 'first_due_date' => today()];
-$services = q_all('SELECT id, name, allowed_cycles FROM services WHERE is_active = 1 ORDER BY kind, sort_order, name');
+$titles = used_service_titles();
 $val = fn($k) => e(old($k, $c[$k] ?? ''));
 $sectors = q("SELECT DISTINCT sector FROM customers WHERE sector IS NOT NULL AND sector <> '' ORDER BY sector")->fetchAll(PDO::FETCH_COLUMN);
 $cities = q("SELECT DISTINCT city FROM customers WHERE city IS NOT NULL AND city <> '' ORDER BY city")->fetchAll(PDO::FETCH_COLUMN);

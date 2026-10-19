@@ -27,8 +27,8 @@ $periodLabel = $sel ? TR_MONTHS[$sel] . ' ' . $year : $year . ' (tüm yıl)';
 
 // Hizmet bazında tahsilat
 $byService = q_all(
-    "SELECT COALESCE(s.name, NULLIF(o.title, ''), 'Genel ödeme') AS name, SUM(p.amount) AS total
-     FROM payments p LEFT JOIN dues d ON d.id = p.due_id LEFT JOIN orders o ON o.id = d.order_id LEFT JOIN services s ON s.id = o.service_id
+    "SELECT COALESCE(NULLIF(o.title, ''), 'Genel ödeme (avans)') AS name, SUM(p.amount) AS total
+     FROM payments p LEFT JOIN dues d ON d.id = p.due_id LEFT JOIN orders o ON o.id = d.order_id
      WHERE YEAR(p.paid_at) = ? GROUP BY name ORDER BY total DESC",
     [$year]
 );

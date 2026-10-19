@@ -26,16 +26,16 @@ INSERT INTO customers (id, company_name, contact_name, phone, email, sector, cit
 -- Örnek siparişler
 -- ---------------------------------------------------------------------
 
-INSERT INTO orders (id, customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, status, notes) VALUES
-(1, 1, 1, NULL, 'monthly', 7500, 0, CURDATE() - INTERVAL 150 DAY, CURDATE() - INTERVAL 150 DAY, NULL, 'active', NULL),
-(2, 2, 4, NULL, 'monthly', 10000, 12500, CURDATE() - INTERVAL 200 DAY, CURDATE() - INTERVAL 200 DAY, NULL, 'active', NULL),
-(3, 3, 2, NULL, 'yearly', 4000, 20000, CURDATE() - INTERVAL 360 DAY, (CURDATE() - INTERVAL 360 DAY) + INTERVAL 1 YEAR, NULL, 'active', 'İlk yıl kurulum ücretine dahil; yenileme yıllık.'),
-(4, 4, 1, NULL, 'monthly', 6000, 0, CURDATE() - INTERVAL 75 DAY, CURDATE() - INTERVAL 75 DAY, NULL, 'active', 'Özel fiyat.'),
-(5, 5, 3, NULL, 'yearly', 12000, 0, CURDATE() - INTERVAL 40 DAY, CURDATE() - INTERVAL 40 DAY, NULL, 'active', NULL),
-(6, 6, 6, NULL, 'monthly', 14000, 15000, CURDATE() - INTERVAL 100 DAY, CURDATE() - INTERVAL 100 DAY, NULL, 'active', NULL),
-(7, 7, 5, NULL, 'monthly', 9000, 0, CURDATE() - INTERVAL 20 DAY, CURDATE() - INTERVAL 20 DAY, NULL, 'active', NULL),
-(8, 9, 1, NULL, 'monthly', 5000, 0, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 120 DAY, 'cancelled', NULL),
-(9, 1, NULL, 'Web sitesi tasarımı', 'one_time', 18000, 0, CURDATE() - INTERVAL 120 DAY, CURDATE() - INTERVAL 120 DAY, NULL, 'completed', NULL);
+INSERT INTO orders (id, customer_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, status, notes) VALUES
+(1, 1, 'Sosyal Medya', 'monthly', 7500, 0, CURDATE() - INTERVAL 150 DAY, CURDATE() - INTERVAL 150 DAY, NULL, 'active', NULL),
+(2, 2, 'Sosyal Medya', 'monthly', 10000, 12500, CURDATE() - INTERVAL 200 DAY, CURDATE() - INTERVAL 200 DAY, NULL, 'active', NULL),
+(3, 3, 'Kurumsal Web Sitesi', 'yearly', 4000, 20000, CURDATE() - INTERVAL 360 DAY, (CURDATE() - INTERVAL 360 DAY) + INTERVAL 1 YEAR, NULL, 'active', 'İlk yıl kurulum ücretine dahil; yenileme yıllık.'),
+(4, 4, 'Sosyal Medya', 'monthly', 6000, 0, CURDATE() - INTERVAL 75 DAY, CURDATE() - INTERVAL 75 DAY, NULL, 'active', 'Özel fiyat.'),
+(5, 5, 'İşletme Paneli', 'yearly', 12000, 0, CURDATE() - INTERVAL 40 DAY, CURDATE() - INTERVAL 40 DAY, NULL, 'active', NULL),
+(6, 6, 'Web Sitesi', 'monthly', 14000, 15000, CURDATE() - INTERVAL 100 DAY, CURDATE() - INTERVAL 100 DAY, NULL, 'active', NULL),
+(7, 7, 'Sosyal Medya', 'monthly', 9000, 0, CURDATE() - INTERVAL 20 DAY, CURDATE() - INTERVAL 20 DAY, NULL, 'active', NULL),
+(8, 9, 'Sosyal Medya', 'monthly', 5000, 0, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 120 DAY, 'cancelled', NULL),
+(9, 1, 'Web sitesi tasarımı', 'one_time', 18000, 0, CURDATE() - INTERVAL 120 DAY, CURDATE() - INTERVAL 120 DAY, NULL, 'completed', NULL);
 
 -- Kurulum ücretleri
 INSERT INTO dues (order_id, customer_id, period_no, due_date, amount)

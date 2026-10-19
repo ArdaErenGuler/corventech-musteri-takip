@@ -1,24 +1,16 @@
 <?php
 /**
  * Hizmet / ödeme planı alanları (sipariş formu ve yeni müşteri formu ortak kullanır).
- * Beklenen değişkenler: $o (varsayılan değerler), $errors, $services
+ * Beklenen değişkenler: $o (varsayılan değerler), $errors, $titles (daha önce kullanılan hizmet adları)
  * Fiyat otomatik dolmaz; her müşteri için elle girilir.
  */
 $ov = fn($k) => e(old($k, $o[$k] ?? ''));
 ?>
-<div class="field<?= isset($errors['service_id']) ? ' has-error' : '' ?>">
-    <label for="service_id">Paket</label>
-    <select id="service_id" name="service_id">
-        <option value="">Özel hizmet (paketsiz)</option>
-        <?php foreach ($services as $s): ?>
-            <option value="<?= (int) $s['id'] ?>" data-cycles="<?= e($s['allowed_cycles'] ?? '') ?>"<?= (int) old('service_id', $o['service_id'] ?? '') === (int) $s['id'] ? ' selected' : '' ?>><?= e($s['name']) ?></option>
-        <?php endforeach; ?>
-    </select>
-    <?= field_error($errors, 'service_id') ?>
-</div>
-<div class="field">
-    <label for="title">Hizmet adı <span class="dim">(opsiyonel)</span></label>
-    <input id="title" name="title" value="<?= $ov('title') ?>" placeholder="Boşsa paket adı kullanılır">
+<div class="field span-2<?= isset($errors['title']) ? ' has-error' : '' ?>">
+    <label for="title">Hizmet adı <span class="req">*</span></label>
+    <input id="title" name="title" list="title-list" value="<?= $ov('title') ?>" placeholder="Örn. Sosyal Medya, Web Sitesi, İşletme Paneli" autocomplete="off">
+    <datalist id="title-list"><?php foreach ($titles as $t): ?><option value="<?= e($t) ?>"><?php endforeach; ?></datalist>
+    <?= field_error($errors, 'title') ?>
 </div>
 <fieldset class="field span-2<?= isset($errors['billing_cycle']) ? ' has-error' : '' ?>">
     <legend class="label">Ödeme tipi</legend>

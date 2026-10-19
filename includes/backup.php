@@ -97,8 +97,8 @@ function backup_readable_sheets(): array
     $orders = array_map(fn($o) => [
         $o['customer_name'], order_name($o), CYCLE_LABELS[$o['billing_cycle']] ?? '', $num($o['price']), $num($o['setup_fee']),
         $tr($o['start_date']), $tr($o['first_due_date']), $tr($o['end_date']), ORDER_STATUS_LABELS[$o['status']] ?? $o['status'],
-    ], q_all("SELECT o.*, s.name AS service_name, COALESCE(NULLIF(c.company_name, ''), c.contact_name) AS customer_name
-              FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN services s ON s.id = o.service_id ORDER BY o.id"));
+    ], q_all("SELECT o.*, COALESCE(NULLIF(c.company_name, ''), c.contact_name) AS customer_name
+              FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id"));
 
     $payments = array_map(fn($p) => [
         $tr($p['paid_at']), customer_display_name($p), $p['due_id'] ? order_name($p) . ' · ' . due_label($p) : 'Genel ödeme',

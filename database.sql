@@ -11,7 +11,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS sessions, transactions, recurring_transactions, posts, payments, dues, orders, tasks, customer_notes, customers, services, login_attempts, settings, users;
+DROP TABLE IF EXISTS sessions, transactions, recurring_transactions, posts, payments, dues, orders, tasks, customer_notes, customers, login_attempts, settings, users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -80,24 +80,12 @@ CREATE TABLE customer_notes (
     CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
--- Paket adları (fiyat tutulmaz; fiyat her müşteri için elle girilir)
-CREATE TABLE services (
-    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name              VARCHAR(120) NOT NULL,
-    kind              ENUM('single','combo') NOT NULL DEFAULT 'single',
-    description       TEXT NULL,
-    allowed_cycles    VARCHAR(60) NULL COMMENT 'İzin verilen ödeme tipleri (virgülle); boşsa hepsi',
-    is_active         TINYINT(1) NOT NULL DEFAULT 1,
-    sort_order        INT NOT NULL DEFAULT 0,
-    created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
 -- Siparişler: müşteriye satılan hizmet ve ödeme planı
 CREATE TABLE orders (
     id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     customer_id    INT UNSIGNED NOT NULL,
-    service_id     INT UNSIGNED NULL,
-    title          VARCHAR(150) NULL,
+    title          VARCHAR(150) NOT NULL COMMENT 'Hizmet adı (örn. Sosyal Medya, Web Sitesi)',
     billing_cycle  ENUM('one_time','monthly','yearly','installment') NOT NULL,
     price          DECIMAL(12,2) NOT NULL COMMENT 'Aylık/yıllık/tek seferlik tutar; taksitli işte TOPLAM tutar',
     installments   TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Taksitli işlerde taksit sayısı',
@@ -114,7 +102,6 @@ CREATE TABLE orders (
     INDEX idx_customer (customer_id),
     INDEX idx_status (status),
     CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-    CONSTRAINT fk_orders_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE SET NULL,
     CONSTRAINT fk_orders_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
@@ -235,17 +222,6 @@ CREATE TABLE transactions (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
-('db_version', '7'),
+('db_version', '8'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
--- ---------------------------------------------------------------------
--- Paketler (6 adet) — fiyat yok, her müşteride elle girilir
--- ---------------------------------------------------------------------
-
-INSERT INTO services (id, name, kind, description, allowed_cycles, sort_order) VALUES
-(1, 'Sosyal Medya', 'single', 'Hesap yönetimi, içerik planı ve paylaşımlar.', 'monthly', 1),
-(2, 'Kurumsal Web Sitesi', 'single', 'Site tasarımı, kurulum, barındırma ve bakım.', 'installment,yearly', 2),
-(3, 'İşletme Paneli', 'single', 'İşletmeye özel yönetim paneli.', 'installment,yearly', 3),
-(4, 'Web Sitesi + Sosyal Medya', 'combo', NULL, NULL, 4),
-(5, 'İşletme Paneli + Sosyal Medya', 'combo', NULL, NULL, 5),
-(6, 'Full Paket (Web + Panel + Sosyal Medya)', 'combo', NULL, NULL, 6);

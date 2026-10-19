@@ -39,14 +39,14 @@ const CUSTOMER_STATUS_LABELS = [
 
 /**
  * Yeni sipariş oluşturur ve ödeme planını üretir. Sipariş formu ve "yeni müşteri" formu kullanır.
- * $o: customer_id, service_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, notes
+ * $o: customer_id, title, billing_cycle, price, setup_fee, start_date, first_due_date, end_date, notes
  */
 function create_order(array $o, int $userId): int
 {
     q(
-        "INSERT INTO orders (customer_id, service_id, title, billing_cycle, price, installments, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-        [$o['customer_id'], $o['service_id'] ?: null, $o['title'] ?: null, $o['billing_cycle'], $o['price'], $o['installments'] ?? 1, $o['setup_fee'],
+        "INSERT INTO orders (customer_id, title, billing_cycle, price, installments, setup_fee, start_date, first_due_date, end_date, status, notes, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+        [$o['customer_id'], $o['title'], $o['billing_cycle'], $o['price'], $o['installments'] ?? 1, $o['setup_fee'],
          $o['start_date'], $o['first_due_date'], $o['end_date'] ?? null, $o['notes'] ?? null, $userId]
     );
     $id = (int) db()->lastInsertId();
@@ -57,23 +57,26 @@ function create_order(array $o, int $userId): int
     return $id;
 }
 
+/** Daha önce girilen hizmet adları (formda öneri listesi); sık kullanılanlar önce */
+function used_service_titles(): array
+{
+    $names = q("SELECT title FROM orders WHERE title <> '' AND title NOT LIKE '%+%' GROUP BY title ORDER BY COUNT(*) DESC, title LIMIT 30")->fetchAll(PDO::FETCH_COLUMN);
+    foreach (['Sosyal Medya', 'Web Sitesi', 'İşletme Paneli'] as $base) {
+        if (!in_array($base, $names, true)) {
+            $names[] = $base;
+        }
+    }
+    return $names;
+}
+
 /**
  * Sipariş formu alanlarını doğrular ve normalleştirir (müşteri hariç).
  * Dönen dizi: [$data, $errors]
  */
-/** Paketin izin verdiği ödeme tipleri (null = kısıtlama yok) */
-function allowed_cycles_for(?int $serviceId): ?array
-{
-    $csv = $serviceId ? (string) q_val('SELECT allowed_cycles FROM services WHERE id = ?', [$serviceId]) : '';
-    $list = array_values(array_filter(array_map('trim', explode(',', $csv)), fn($k) => isset(CYCLE_LABELS[$k])));
-    return $list ?: null;
-}
-
-function validate_order_input(?string $keepCycle = null): array
+function validate_order_input(): array
 {
     $errors = [];
     $d = [
-        'service_id'     => input_int('service_id'),
         'title'          => input('title'),
         'billing_cycle'  => input('billing_cycle'),
         'price'          => input_money('price'),
@@ -84,13 +87,14 @@ function validate_order_input(?string $keepCycle = null): array
         'end_date'       => input_date('end_date'),
         'notes'          => input('notes'),
     ];
-    if ($d['service_id'] && !q_val('SELECT id FROM services WHERE id = ?', [$d['service_id']])) $errors['service_id'] = 'Geçersiz paket.';
-    if (!$d['service_id'] && $d['title'] === '') $errors['service_id'] = 'Paket seçin ya da hizmete bir ad yazın.';
+    if ($d['title'] === '') {
+        $errors['title'] = 'Hizmetin adını yazın (örn. Sosyal Medya, Web Sitesi).';
+    } elseif (str_contains($d['title'], '+')) {
+        // Her hizmet ayrı kayıt: ödemeler karışmasın
+        $errors['title'] = 'Her hizmeti ayrı ekleyin (örn. "Web Sitesi" ve "Sosyal Medya" iki ayrı kayıt).';
+    }
     if (!isset(CYCLE_LABELS[$d['billing_cycle']])) {
         $errors['billing_cycle'] = 'Ödeme tipini seçin.';
-    } elseif (($allowed = allowed_cycles_for($d['service_id'])) && !in_array($d['billing_cycle'], $allowed, true) && $d['billing_cycle'] !== $keepCycle) {
-        // (Kayıtlı işin mevcut tipi düzenlemede olduğu gibi bırakılabilir)
-        $errors['billing_cycle'] = 'Bu paket için yalnızca ' . implode(' veya ', array_map(fn($k) => mb_strtolower(CYCLE_LABELS[$k]), $allowed)) . ' ödeme seçilebilir.';
     }
     if ($d['price'] === null || $d['price'] < 0) $errors['price'] = 'Tutarı yazın.';
     if ($d['setup_fee'] < 0) $errors['setup_fee'] = 'Geçerli bir tutar yazın.';
@@ -242,12 +246,11 @@ function trim_future_dues(int $orderId): void
 /** Dönemleri ödenen tutarla birlikte getiren temel sorgu (sonuna WHERE eklenir). */
 const DUES_SELECT = "
     SELECT d.*, COALESCE(pp.paid, 0) AS paid, d.amount - COALESCE(pp.paid, 0) AS remaining,
-           o.billing_cycle, o.installments, o.title AS order_title, s.name AS service_name,
+           o.billing_cycle, o.installments, o.title AS order_title,
            c.company_name, c.contact_name, c.phone
     FROM dues d
     JOIN orders o ON o.id = d.order_id
     JOIN customers c ON c.id = d.customer_id
-    LEFT JOIN services s ON s.id = o.service_id
     LEFT JOIN (SELECT due_id, SUM(amount) AS paid FROM payments WHERE due_id IS NOT NULL GROUP BY due_id) pp ON pp.due_id = d.id
 ";
 
@@ -307,7 +310,7 @@ function due_label(array $d): string
 function order_name(array $row): string
 {
     $title = (string) ($row['order_title'] ?? $row['title'] ?? '');
-    return $title !== '' ? $title : ($row['service_name'] ?? 'Hizmet');
+    return $title !== '' ? $title : 'Hizmet';
 }
 
 /**
@@ -355,9 +358,9 @@ function all_customer_balances(): array
 }
 
 /**
- * Yeni ödemeyi kaydeder. Tutar seçilen dönemin kalanından fazlaysa fazlası, müşterinin sonraki
- * açık dönemlerine tarih sırasıyla dağıtılır (örn. 3 ayı birden ödeyen müşteri). Hiç açık dönem
- * kalmazsa artan tutar döneme bağlanmadan (avans) kaydedilir. Dönen: oluşan ödeme satırı sayısı.
+ * Yeni ödemeyi kaydeder. Tutar seçilen dönemin kalanından fazlaysa fazlası, AYNI hizmetin sonraki
+ * açık dönemlerine tarih sırasıyla dağıtılır (örn. 3 ayı birden ödeyen müşteri). Hizmetler birbirine
+ * karışmaz. Hiç açık dönem kalmazsa artan tutar döneme bağlanmadan (avans) kaydedilir. Dönen: oluşan ödeme satırı sayısı.
  */
 function record_payment(int $customerId, ?int $dueId, float $amount, string $paidAt, string $method, ?string $note, int $userId): int
 {
@@ -366,7 +369,9 @@ function record_payment(int $customerId, ?int $dueId, float $amount, string $pai
         $insert->execute([$customerId, null, $amount, $paidAt, $method, $note, $userId]);
         return 1;
     }
-    $open = q_all(DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.customer_id = ? ORDER BY d.id = ? DESC, d.due_date, d.id', [$customerId, $dueId]);
+    // Yalnızca seçilen dönemin kendi hizmetinin (siparişin) dönemlerine dağıtılır; başka hizmetin borcuna asla geçmez
+    $orderId = (int) q_val('SELECT order_id FROM dues WHERE id = ? AND customer_id = ?', [$dueId, $customerId]);
+    $open = q_all(DUES_SELECT . ' WHERE ' . DUES_UNPAID . ' AND d.order_id = ? ORDER BY d.id = ? DESC, d.due_date, d.id', [$orderId, $dueId]);
     $left = round($amount, 2);
     $rows = 0;
     db()->beginTransaction();
