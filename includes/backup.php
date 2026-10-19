@@ -91,12 +91,12 @@ function backup_readable_sheets(): array
 
     $customers = array_map(fn($c) => [
         $c['company_name'], $c['contact_name'], $c['phone'], $c['email'], $c['sector'], $c['city'],
-        CUSTOMER_STATUS_LABELS[$c['status']] ?? $c['status'], OWNER_LABELS[$c['owner']] ?? $c['owner'], $tr($c['registered_at']), $c['notes'],
+        CUSTOMER_STATUS_LABELS[$c['status']] ?? $c['status'], $tr($c['registered_at']), $c['notes'],
     ], q_all('SELECT * FROM customers ORDER BY id'));
 
     $orders = array_map(fn($o) => [
         $o['customer_name'], order_name($o), CYCLE_LABELS[$o['billing_cycle']] ?? '', $num($o['price']), $num($o['setup_fee']),
-        share_text($o), $tr($o['start_date']), $tr($o['first_due_date']), $tr($o['end_date']), ORDER_STATUS_LABELS[$o['status']] ?? $o['status'],
+        $tr($o['start_date']), $tr($o['first_due_date']), $tr($o['end_date']), ORDER_STATUS_LABELS[$o['status']] ?? $o['status'],
     ], q_all("SELECT o.*, s.name AS service_name, COALESCE(NULLIF(c.company_name, ''), c.contact_name) AS customer_name
               FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN services s ON s.id = o.service_id ORDER BY o.id"));
 
@@ -106,7 +106,7 @@ function backup_readable_sheets(): array
     ], q_all(PAYMENTS_SELECT . ' ORDER BY p.paid_at, p.id'));
 
     $txns = array_map(fn($t) => [
-        $tr($t['txn_date']), $t['type'] === 'income' ? 'Gelir' : 'Gider', WALLETS[$t['wallet']] ?? $t['wallet'], $t['category'], $num($t['amount']), $t['description'],
+        $tr($t['txn_date']), $t['type'] === 'income' ? 'Gelir' : 'Gider', $t['category'], $num($t['amount']), $t['description'],
     ], q_all('SELECT * FROM transactions ORDER BY txn_date, id'));
 
     $posts = array_map(fn($p) => [
@@ -114,10 +114,10 @@ function backup_readable_sheets(): array
     ], q_all(POSTS_SELECT . ' ORDER BY p.scheduled_date, p.id'));
 
     return [
-        'excel/musteriler.csv'  => backup_csv(['Firma', 'Ad soyad', 'Telefon', 'E-posta', 'Sektör', 'Şehir', 'Durum', 'Kimin', 'Kayıt tarihi', 'Notlar'], $customers),
-        'excel/isler.csv'       => backup_csv(['Müşteri', 'Hizmet', 'Ödeme tipi', 'Tutar', 'Kurulum', 'Pay', 'Başlangıç', 'İlk ödeme', 'Bitiş', 'Durum'], $orders),
+        'excel/musteriler.csv'  => backup_csv(['Firma', 'Ad soyad', 'Telefon', 'E-posta', 'Sektör', 'Şehir', 'Durum', 'Kayıt tarihi', 'Notlar'], $customers),
+        'excel/isler.csv'       => backup_csv(['Müşteri', 'Hizmet', 'Ödeme tipi', 'Tutar', 'Kurulum', 'Başlangıç', 'İlk ödeme', 'Bitiş', 'Durum'], $orders),
         'excel/odemeler.csv'    => backup_csv(['Tarih', 'Müşteri', 'Ne için', 'Tutar', 'Yöntem', 'Not'], $payments),
-        'excel/gelir-gider.csv' => backup_csv(['Tarih', 'Tür', 'Kasa', 'Kategori', 'Tutar', 'Açıklama'], $txns),
+        'excel/gelir-gider.csv' => backup_csv(['Tarih', 'Tür', 'Kategori', 'Tutar', 'Açıklama'], $txns),
         'excel/takvim.csv'      => backup_csv(['Tarih', 'Müşteri', 'Durum'], $posts),
     ];
 }

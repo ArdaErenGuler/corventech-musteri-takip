@@ -144,36 +144,6 @@
         }
         cycles.forEach(function (r) { r.addEventListener('change', syncCycle); });
         syncCycle();
-
-        // "Para kime gidecek?": özel oran alanları + müşteri sahibine göre önerilen seçenek
-        var splitRadios = $$('[name="split"]', orderForm);
-        var splitCustom = $('[data-split-custom]', orderForm);
-        var splitTouched = false;
-        function syncSplit() {
-            var c = splitRadios.filter(function (r) { return r.checked; })[0];
-            if (splitCustom) splitCustom.hidden = !c || c.value !== 'custom';
-        }
-        function suggestSplit(owner) {
-            if (splitTouched || !owner) return;
-            var key = owner === 'arda' || owner === 'melih' ? owner : 'ortak';
-            splitRadios.forEach(function (r) { r.checked = r.value === key; });
-            syncSplit();
-        }
-        splitRadios.forEach(function (r) {
-            r.addEventListener('change', function () { splitTouched = true; syncSplit(); });
-        });
-        var ownerSelect = $('[data-owner-source]', orderForm);
-        if (ownerSelect) {
-            ownerSelect.addEventListener('change', function () {
-                var opt = ownerSelect.options[ownerSelect.selectedIndex];
-                suggestSplit(opt && opt.dataset.owner);
-            });
-        }
-        $$('[name="owner"]', orderForm).forEach(function (r) {
-            r.addEventListener('change', function () { if (r.checked) suggestSplit(r.value); });
-        });
-        syncSplit();
-
         if (firstDue && start) {
             firstDue.addEventListener('input', function () { firstDueTouched = true; });
             start.addEventListener('change', function () { if (!firstDueTouched) firstDue.value = start.value; });
@@ -257,8 +227,6 @@
             });
             var first = $('optgroup[data-for="' + r.value + '"] option', select);
             if (first) select.value = first.value;
-            var walletLabel = $('[data-wallet-label]', r.form);
-            if (walletLabel) walletLabel.textContent = r.value === 'income' ? 'Hangi kasaya girdi?' : 'Hangi kasadan ödendi?';
         });
     });
 

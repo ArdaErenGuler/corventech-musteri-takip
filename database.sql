@@ -59,7 +59,6 @@ CREATE TABLE customers (
     sector        VARCHAR(100) NULL,
     city          VARCHAR(60)  NULL,
     status        ENUM('active','potential','passive') NOT NULL DEFAULT 'active',
-    owner         ENUM('arda','melih','ortak') NOT NULL DEFAULT 'ortak',
     notes         TEXT NULL,
     registered_at DATE NOT NULL,
     created_by    INT UNSIGNED NULL,
@@ -67,7 +66,6 @@ CREATE TABLE customers (
     updated_at    DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_status (status),
     INDEX idx_city (city),
-    INDEX idx_owner (owner),
     CONSTRAINT fk_customers_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
@@ -102,9 +100,6 @@ CREATE TABLE orders (
     billing_cycle  ENUM('one_time','monthly','yearly') NOT NULL,
     price          DECIMAL(12,2) NOT NULL,
     setup_fee      DECIMAL(12,2) NOT NULL DEFAULT 0,
-    share_arda     DECIMAL(7,4) NOT NULL DEFAULT 0   COMMENT 'Bu işin parasının Arda kasasına giden yüzdesi',
-    share_melih    DECIMAL(7,4) NOT NULL DEFAULT 0   COMMENT 'Melih kasasına giden yüzde',
-    share_company  DECIMAL(7,4) NOT NULL DEFAULT 100 COMMENT 'Şirket kasasına giden yüzde (toplam 100)',
     start_date     DATE NOT NULL,
     first_due_date DATE NOT NULL,
     end_date       DATE NULL,
@@ -203,7 +198,6 @@ CREATE TABLE posts (
 CREATE TABLE recurring_transactions (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type        ENUM('income','expense') NOT NULL,
-    wallet      ENUM('company','arda','melih') NOT NULL DEFAULT 'company',
     category    VARCHAR(60) NOT NULL,
     amount      DECIMAL(12,2) NOT NULL,
     cycle       ENUM('monthly','yearly') NOT NULL,
@@ -220,7 +214,6 @@ CREATE TABLE recurring_transactions (
 CREATE TABLE transactions (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type        ENUM('income','expense') NOT NULL,
-    wallet      ENUM('company','arda','melih') NOT NULL DEFAULT 'company' COMMENT 'Gider hangi kasadan ödendi / gelir hangi kasaya girdi',
     category    VARCHAR(60) NOT NULL,
     amount      DECIMAL(12,2) NOT NULL,
     txn_date    DATE NOT NULL,
@@ -240,7 +233,7 @@ CREATE TABLE transactions (
 INSERT INTO settings (`key`, `value`) VALUES
 ('company_name', 'Corventech'),
 ('upcoming_days', '30'),
-('db_version', '4'),
+('db_version', '5'),
 ('wa_template', 'Merhaba {musteri}, {hizmet} hizmetinizin {tarih} tarihli {tutar} tutarındaki ödemesini hatırlatmak isteriz. İyi çalışmalar, Corventech');
 
 -- ---------------------------------------------------------------------

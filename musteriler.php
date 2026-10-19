@@ -7,7 +7,6 @@ $page = max(1, input_int('page') ?? 1);
 $search = input('q');
 $status = input('status');
 $sector = input('sector');
-$owner = input('owner');
 $debtOnly = input('borc') === '1';
 
 $where = [];
@@ -25,10 +24,6 @@ if ($search !== '') {
 if (isset(CUSTOMER_STATUS_LABELS[$status])) {
     $where[] = 'c.status = ?';
     $params[] = $status;
-}
-if (isset(OWNER_LABELS[$owner])) {
-    $where[] = 'c.owner = ?';
-    $params[] = $owner;
 }
 if ($sector !== '') {
     $where[] = 'c.sector = ?';
@@ -55,18 +50,12 @@ $counts = ['' => (int) q_val('SELECT COUNT(*) FROM customers')];
 foreach (q_all('SELECT status, COUNT(*) n FROM customers GROUP BY status') as $r) {
     $counts[$r['status']] = (int) $r['n'];
 }
-$ownerCounts = [];
-foreach (q_all('SELECT owner, COUNT(*) n FROM customers GROUP BY owner') as $r) {
-    $ownerCounts[$r['owner']] = (int) $r['n'];
-}
 $sectors = q("SELECT DISTINCT sector FROM customers WHERE sector IS NOT NULL AND sector <> '' ORDER BY sector")->fetchAll(PDO::FETCH_COLUMN);
 
 layout_start('Müşteriler', 'customers');
 ?>
 <form class="toolbar" method="get" role="search">
-    <?php if ($status !== ''): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>
-    <?php if ($owner !== ''): ?><input type="hidden" name="owner" value="<?= e($owner) ?>"><?php endif; ?>
-    <div class="search">
+    <?php if ($status !== ''): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>    <div class="search">
         <?= icon('search') ?>
         <input type="search" name="q" value="<?= e($search) ?>" placeholder="İsim, firma, telefon, şehir ara…" aria-label="Müşteri ara" enterkeyhint="search">
     </div>
@@ -80,13 +69,6 @@ layout_start('Müşteriler', 'customers');
     <?php endif; ?>
 </form>
 
-<div class="tabs" role="tablist" aria-label="Kimin müşterisi">
-    <a class="tab<?= $owner === '' ? ' is-active' : '' ?>" href="<?= e(url_with(['owner' => null, 'page' => null])) ?>">Hepsi <span class="nav-badge"><?= array_sum($ownerCounts) ?></span></a>
-    <?php foreach (OWNER_LABELS as $key => $label): ?>
-        <a class="tab<?= $owner === $key ? ' is-active' : '' ?>" href="<?= e(url_with(['owner' => $key, 'page' => null])) ?>"><?= e($label) ?> <span class="nav-badge"><?= $ownerCounts[$key] ?? 0 ?></span></a>
-    <?php endforeach; ?>
-</div>
-
 <nav class="chips" aria-label="Duruma göre filtrele">
     <a class="chip<?= $status === '' && !$debtOnly ? ' is-active' : '' ?>" href="<?= e(url_with(['status' => null, 'borc' => null, 'page' => null])) ?>">Tümü <b><?= $counts[''] ?></b></a>
     <?php foreach (CUSTOMER_STATUS_LABELS as $key => $label): ?>
@@ -96,7 +78,7 @@ layout_start('Müşteriler', 'customers');
 </nav>
 
 <?php if (!$customers): ?>
-    <?= $search !== '' || $status !== '' || $sector !== '' || $owner !== '' || $debtOnly
+    <?= $search !== '' || $status !== '' || $sector !== '' || $debtOnly
         ? empty_state('Aramanıza uyan müşteri bulunamadı.')
         : empty_state('Henüz müşteri eklenmedi.', 'musteri-form.php', 'İlk müşteriyi ekle') ?>
 <?php else: ?>
@@ -116,7 +98,6 @@ layout_start('Müşteriler', 'customers');
                     </div>
                     <div class="item-sub">
                         <?= customer_status_badge($c['status']) ?>
-                        <?= owner_badge($c['owner']) ?>
                         <?php if ($bal > 0.009): ?><?= badge('Borç ' . money($bal), 'critical') ?><?php endif; ?>
                         <?php if ($c['active_orders'] > 0): ?><?= badge($c['active_orders'] . ' aktif hizmet', 'neutral') ?><?php endif; ?>
                     </div>

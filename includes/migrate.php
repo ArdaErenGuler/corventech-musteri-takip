@@ -3,10 +3,10 @@
  * Veritabanı güncellemeleri (migrations/NNN_*.sql).
  *
  * Uygulanan son güncellemenin numarası settings.db_version'da tutulur. Kod, DB_VERSION'dan eski bir
- * veritabanıyla çalışırsa yöneticiye uyarı gösterilir; Ayarlar → Sistem'den tek tuşla uygulanır.
+ * veritabanıyla çalışırsa panel ilk açılışta bekleyen güncellemeleri kendiliğinden uygular (auto_migrate).
  */
 
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 function db_version(): int
 {

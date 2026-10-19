@@ -6,23 +6,23 @@ $currentYear = (int) date('Y');
 $firstYear = (int) (q_val('SELECT YEAR(MIN(paid_at)) FROM payments') ?: $currentYear);
 $year = max($firstYear, min($currentYear, input_int('yil') ?? $currentYear));
 $lastMonth = $year === $currentYear ? (int) date('n') : 12;
-// Kasa bölümü için seçili ay (0 = tüm yıl); grafikteki aya basınca değişir
+// Şirket kasası bölümü için seçili ay (0 = tüm yıl); grafikteki aya basınca değişir
 $sel = isset($_GET['ay']) ? max(0, min($lastMonth, (int) $_GET['ay'])) : ($year === $currentYear ? $lastMonth : 0);
 
-// Aylık tahsilat ve kasalar
+// Aylık tahsilat ve şirket kasası
 $monthly = [];
 for ($m = 1; $m <= 12; $m++) {
     $start = sprintf('%04d-%02d-01', $year, $m);
-    $monthly[$m] = $m <= $lastMonth ? wallet_breakdown($start, date('Y-m-t', strtotime($start))) : null;
+    $monthly[$m] = $m <= $lastMonth ? company_breakdown($start, date('Y-m-t', strtotime($start))) : null;
 }
-$values = array_map(fn($b) => $b ? $b['total'] : 0.0, $monthly);
+$values = array_map(fn($b) => $b ? $b['collected'] : 0.0, $monthly);
 $yearTotal = array_sum($values);
 $prevYearTotal = (float) q_val('SELECT COALESCE(SUM(amount), 0) FROM payments WHERE YEAR(paid_at) = ?', [$year - 1]);
 $max = max($values) ?: 1;
 $maxMonth = array_search(max($values), $values, true);
 
-$period = $sel ? wallet_breakdown(sprintf('%04d-%02d-01', $year, $sel), date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $sel))))
-               : wallet_breakdown("$year-01-01", "$year-12-31");
+$period = $sel ? company_breakdown(sprintf('%04d-%02d-01', $year, $sel), date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, $sel))))
+               : company_breakdown("$year-01-01", "$year-12-31");
 $periodLabel = $sel ? TR_MONTHS[$sel] . ' ' . $year : $year . ' (tüm yıl)';
 
 // Hizmet bazında tahsilat
@@ -45,13 +45,11 @@ $collectionRate = $rate['due'] > 0 ? $rate['paid'] / $rate['due'] * 100 : null;
 $mrr = monthly_recurring_revenue();
 $payingCustomers = (int) q_val("SELECT COUNT(DISTINCT customer_id) FROM orders WHERE status = 'active' AND billing_cycle <> 'one_time'");
 
-// Bekleyen alacaklar, müşteri sahibine göre
+// Bekleyen alacaklar
 $balances = array_filter(all_customer_balances(), fn($b) => $b > 0.009);
-$debtByOwner = ['arda' => 0.0, 'melih' => 0.0, 'ortak' => 0.0];
 $debtors = [];
 if ($balances) {
-    foreach (q_all('SELECT id, company_name, contact_name, owner FROM customers WHERE id IN (' . implode(',', array_map('intval', array_keys($balances))) . ')') as $c) {
-        $debtByOwner[$c['owner']] += $balances[(int) $c['id']];
+    foreach (q_all('SELECT id, company_name, contact_name FROM customers WHERE id IN (' . implode(',', array_map('intval', array_keys($balances))) . ')') as $c) {
         $debtors[] = $c + ['balance' => $balances[(int) $c['id']]];
     }
     usort($debtors, fn($a, $b) => $b['balance'] <=> $a['balance']);
@@ -72,7 +70,7 @@ layout_start('Raporlar', 'reports', ['fab' => false]);
         <?php if ($prevYearTotal > 0): $d = ($yearTotal - $prevYearTotal) / $prevYearTotal * 100; ?>
             <?= $year - 1 ?> yılına göre <?= $d >= 0 ? '+' : '−' ?>%<?= number_format(abs($d), 0, ',', '.') ?> ·
         <?php endif; ?>
-        Kasaları görmek için bir aya dokunun
+        Ayrıntı için bir aya dokunun
     </p>
 
     <div class="chart mt" role="img" aria-label="<?= $year ?> aylık tahsilat grafiği">
@@ -81,7 +79,7 @@ layout_start('Raporlar', 'reports', ['fab' => false]);
                 $h = $v > 0 ? max(2, $v / $max * 100) : 0;
                 $future = $m > $lastMonth;
                 $cls = 'chart-col' . ($sel && $m !== $sel ? ' is-dim' : '') . ($m === $sel ? ' is-selected' : ''); ?>
-                <a class="<?= $cls ?>" href="<?= $future ? '#' : 'raporlar.php?yil=' . $year . '&ay=' . $m . '#kasalar' ?>"
+                <a class="<?= $cls ?>" href="<?= $future ? '#' : 'raporlar.php?yil=' . $year . '&ay=' . $m . '#kasa' ?>"
                    data-tip="<?= e('<small>' . TR_MONTHS[$m] . ' ' . $year . '</small>' . ($future ? 'Henüz gelmedi' : money($v))) ?>">
                     <?php if ($m === $maxMonth && $v > 0): ?><span class="val" style="bottom:<?= $h ?>%"><?= e(money_short($v)) ?></span><?php endif; ?>
                     <span class="bar" style="height:<?= $h ?>%"></span>
@@ -98,41 +96,49 @@ layout_start('Raporlar', 'reports', ['fab' => false]);
         <summary>Aylık dökümü tablo olarak göster</summary>
         <div class="table-wrap">
             <table class="data mt">
-                <thead><tr><th>Ay</th><th class="num col-total">Tahsilat</th><th class="num">Arda</th><th class="num">Melih</th><th class="num">Şirket</th></tr></thead>
+                <thead><tr><th>Ay</th><th class="num">Tahsilat</th><th class="num">Gelir</th><th class="num">Gider</th><th class="num">Net</th></tr></thead>
                 <tbody>
                     <?php foreach ($monthly as $m => $b): if (!$b) continue; ?>
                         <tr<?= $m === $sel ? ' class="is-current"' : '' ?>>
-                            <td><a href="raporlar.php?yil=<?= $year ?>&ay=<?= $m ?>#kasalar"><?= TR_MONTHS[$m] ?></a></td>
-                            <td class="num col-total"><?= money($b['total']) ?></td>
-                            <?php foreach (WALLETS as $w => $label): ?>
-                                <td class="num<?= $b['wallets'][$w]['net'] < 0 ? ' text-critical' : '' ?>"><?= money($b['wallets'][$w]['net']) ?></td>
-                            <?php endforeach; ?>
+                            <td><a href="raporlar.php?yil=<?= $year ?>&ay=<?= $m ?>#kasa"><?= TR_MONTHS[$m] ?></a></td>
+                            <td class="num"><?= money($b['collected']) ?></td>
+                            <td class="num"><?= money($b['income']) ?></td>
+                            <td class="num"><?= money($b['expense']) ?></td>
+                            <td class="num<?= $b['net'] < 0 ? ' text-critical' : '' ?>"><?= money($b['net']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-        <p class="muted small">Kasa sütunları net tutardır (işlerden gelen pay + diğer gelir − gider).</p>
+        <p class="muted small">Net = tahsilat + diğer gelir − gider.</p>
     </details>
 </section>
 
-<div class="section-head" id="kasalar">
-    <h2>Kasalar · <?= e($periodLabel) ?></h2>
-    <?php if ($sel): ?><a class="small" href="raporlar.php?yil=<?= $year ?>&ay=0#kasalar">Tüm yıl</a>
-    <?php else: ?><a class="small" href="raporlar.php?yil=<?= $year ?>#kasalar">Bu ay</a><?php endif; ?>
+<div class="section-head" id="kasa">
+    <h2>Şirket kasası · <?= e($periodLabel) ?></h2>
+    <?php if ($sel): ?><a class="small" href="raporlar.php?yil=<?= $year ?>&ay=0#kasa">Tüm yıl</a>
+    <?php else: ?><a class="small" href="raporlar.php?yil=<?= $year ?>#kasa">Bu ay</a><?php endif; ?>
 </div>
-<div class="stats wallets">
-    <?php foreach (WALLETS as $w => $label): $b = $period['wallets'][$w]; ?>
-        <div class="stat<?= $b['net'] < 0 ? ' is-critical' : '' ?>">
-            <div class="stat-label"><?= icon($w === 'company' ? 'briefcase' : 'user') ?><?= e($label) ?> kasası</div>
-            <div class="stat-value"><?= money($b['net']) ?></div>
-            <div class="stat-sub">İşlerden <?= money($b['jobs']) ?></div>
-            <?php if ($b['income'] > 0): ?><div class="stat-sub text-good">Diğer gelir +<?= money($b['income']) ?></div><?php endif; ?>
-            <?php if ($b['expense'] > 0): ?><div class="stat-sub text-critical">Gider −<?= money($b['expense']) ?></div><?php endif; ?>
-        </div>
-    <?php endforeach; ?>
+<div class="stats">
+    <div class="stat<?= $period['net'] < 0 ? ' is-critical' : ' is-good' ?>">
+        <div class="stat-label"><?= icon('briefcase') ?>Net</div>
+        <div class="stat-value"><?= money($period['net']) ?></div>
+        <div class="stat-sub">Giderler düşülmüş</div>
+    </div>
+    <div class="stat">
+        <div class="stat-label"><?= icon('wallet') ?>Müşteri tahsilatı</div>
+        <div class="stat-value"><?= money($period['collected']) ?></div>
+    </div>
+    <div class="stat">
+        <div class="stat-label"><?= icon('trend') ?>Diğer gelir</div>
+        <div class="stat-value text-good"><?= money($period['income']) ?></div>
+    </div>
+    <div class="stat">
+        <div class="stat-label"><?= icon('alert') ?>Gider</div>
+        <div class="stat-value text-critical"><?= money($period['expense']) ?></div>
+    </div>
 </div>
-<p class="muted small" style="margin-top:-6px">Her işin parası, iş eklenirken seçilen orana göre kasalara yazılır. Gelir ve giderler <a href="gelir-gider.php">Gelir / Gider</a> sayfasından girilir.</p>
+<p class="muted small" style="margin-top:-6px">Gelir ve giderler <a href="gelir-gider.php">Gelir / Gider</a> sayfasından girilir.</p>
 
 <div class="stats mt">
     <div class="stat">
@@ -179,18 +185,12 @@ layout_start('Raporlar', 'reports', ['fab' => false]);
 
     <section class="card">
         <div class="card-head"><h2>Bekleyen alacaklar</h2><a href="musteriler.php?borc=1">Tümü</a></div>
-        <dl class="kv ledger">
-            <?php foreach (OWNER_LABELS as $k => $label): ?>
-                <dt><?= e($label) ?> müşterileri</dt><dd class="<?= $debtByOwner[$k] > 0 ? 'text-critical' : '' ?>"><?= money($debtByOwner[$k]) ?></dd>
-            <?php endforeach; ?>
-        </dl>
         <?php if ($debtors): ?>
             <div class="list flush mt">
                 <?php foreach (array_slice($debtors, 0, 5) as $c): ?>
                     <a class="item flush" href="musteri.php?id=<?= (int) $c['id'] ?>#odemeler">
                         <div class="item-main">
                             <span class="item-title"><?= e(customer_display_name($c)) ?></span>
-                            <div class="item-sub"><?= owner_badge($c['owner']) ?></div>
                         </div>
                         <span class="item-amount text-critical"><?= money($c['balance']) ?></span>
                     </a>

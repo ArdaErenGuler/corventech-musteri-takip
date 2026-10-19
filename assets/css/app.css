@@ -408,13 +408,6 @@ input[type="date"] { min-width: 0; }
 .segmented input:checked + span { color: var(--heading); }
 .segmented label:has(input:checked) { background: var(--surface); color: var(--heading); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
 .segmented label:has(input:focus-visible) { outline: 2px solid var(--accent); }
-.split-options { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 720px) { .split-options { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.split-options label { min-height: 54px; padding: 6px; }
-.split-options span { display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
-.split-options small { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-top: 2px; }
-.split-custom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
-.split-custom .field { gap: 2px; }
 .check { display: flex; align-items: center; gap: 10px; font-weight: 600; min-height: 44px; cursor: pointer; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 
@@ -474,7 +467,6 @@ ul.tight li, ol.tight li { margin-bottom: 4px; }
 a.chart-col { text-decoration: none; cursor: pointer; }
 .chart-col.is-dim .bar { background: var(--chart-bar-muted); }
 .chart-labels span.is-selected { color: var(--heading); font-weight: 800; }
-@media (min-width: 900px) { .stats.wallets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .chart-labels { display: flex; gap: 4px; margin-top: 6px; }
 .chart-labels span { flex: 1; text-align: center; font-size: 0.72rem; color: var(--muted); min-width: 0; }
 .chart-tip { position: absolute; z-index: 5; pointer-events: none; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--heading); color: var(--bg); font-size: 0.8rem; font-weight: 700; white-space: nowrap; transform: translate(-50%, -110%); }

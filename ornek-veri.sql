@@ -11,16 +11,16 @@ SET NAMES utf8mb4;
 -- Örnek müşteriler (kurgusal)
 -- ---------------------------------------------------------------------
 
-INSERT INTO customers (id, company_name, contact_name, phone, email, sector, city, status, owner, notes, registered_at) VALUES
-(1, 'Lavanta Kafe', 'Elif Kaya', '0555 000 00 01', 'elif@example.com', 'Kafe & Restoran', 'İzmir', 'active', 'arda', 'Hafta sonu paylaşımlarına ağırlık verilmesini istiyor.', CURDATE() - INTERVAL 160 DAY),
-(2, 'Yıldız Diş Kliniği', 'Dt. Murat Yıldız', '0555 000 00 02', 'murat@example.com', 'Sağlık', 'Ankara', 'active', 'melih', NULL, CURDATE() - INTERVAL 210 DAY),
-(3, 'Akdeniz İnşaat', 'Hasan Demir', '0555 000 00 03', 'info@example.com', 'İnşaat', 'Antalya', 'active', 'ortak', 'Alan adı ve barındırma yıllık yenileniyor.', CURDATE() - INTERVAL 365 DAY),
-(4, 'Mavi Kuaför', 'Zeynep Arslan', '0555 000 00 04', NULL, 'Güzellik & Bakım', 'İstanbul', 'active', 'arda', 'Ödemeleri genelde ay sonunda yapıyor.', CURDATE() - INTERVAL 80 DAY),
-(5, 'Demir Oto Servis', 'Ali Demir', '0555 000 00 05', 'ali@example.com', 'Otomotiv', 'Bursa', 'active', 'melih', NULL, CURDATE() - INTERVAL 45 DAY),
-(6, 'Ege Emlak', 'Selin Aydın', '0555 000 00 06', 'selin@example.com', 'Emlak', 'İzmir', 'active', 'ortak', NULL, CURDATE() - INTERVAL 105 DAY),
-(7, 'Kuzey Lojistik', 'Burak Çelik', '0555 000 00 07', 'burak@example.com', 'Lojistik', 'İstanbul', 'active', 'arda', NULL, CURDATE() - INTERVAL 25 DAY),
-(8, 'Atölye Pilates', 'Deniz Koç', '0555 000 00 08', NULL, 'Spor & Sağlık', 'Ankara', 'potential', 'melih', 'Full paket için teklif bekliyor.', CURDATE() - INTERVAL 6 DAY),
-(9, 'Güneş Optik', 'Kemal Şahin', '0555 000 00 09', NULL, 'Perakende', 'Gaziantep', 'passive', 'ortak', 'Sosyal medya hizmetini sonlandırdı.', CURDATE() - INTERVAL 310 DAY);
+INSERT INTO customers (id, company_name, contact_name, phone, email, sector, city, status, notes, registered_at) VALUES
+(1, 'Lavanta Kafe', 'Elif Kaya', '0555 000 00 01', 'elif@example.com', 'Kafe & Restoran', 'İzmir', 'active', 'Hafta sonu paylaşımlarına ağırlık verilmesini istiyor.', CURDATE() - INTERVAL 160 DAY),
+(2, 'Yıldız Diş Kliniği', 'Dt. Murat Yıldız', '0555 000 00 02', 'murat@example.com', 'Sağlık', 'Ankara', 'active', NULL, CURDATE() - INTERVAL 210 DAY),
+(3, 'Akdeniz İnşaat', 'Hasan Demir', '0555 000 00 03', 'info@example.com', 'İnşaat', 'Antalya', 'active', 'Alan adı ve barındırma yıllık yenileniyor.', CURDATE() - INTERVAL 365 DAY),
+(4, 'Mavi Kuaför', 'Zeynep Arslan', '0555 000 00 04', NULL, 'Güzellik & Bakım', 'İstanbul', 'active', 'Ödemeleri genelde ay sonunda yapıyor.', CURDATE() - INTERVAL 80 DAY),
+(5, 'Demir Oto Servis', 'Ali Demir', '0555 000 00 05', 'ali@example.com', 'Otomotiv', 'Bursa', 'active', NULL, CURDATE() - INTERVAL 45 DAY),
+(6, 'Ege Emlak', 'Selin Aydın', '0555 000 00 06', 'selin@example.com', 'Emlak', 'İzmir', 'active', NULL, CURDATE() - INTERVAL 105 DAY),
+(7, 'Kuzey Lojistik', 'Burak Çelik', '0555 000 00 07', 'burak@example.com', 'Lojistik', 'İstanbul', 'active', NULL, CURDATE() - INTERVAL 25 DAY),
+(8, 'Atölye Pilates', 'Deniz Koç', '0555 000 00 08', NULL, 'Spor & Sağlık', 'Ankara', 'potential', 'Full paket için teklif bekliyor.', CURDATE() - INTERVAL 6 DAY),
+(9, 'Güneş Optik', 'Kemal Şahin', '0555 000 00 09', NULL, 'Perakende', 'Gaziantep', 'passive', 'Sosyal medya hizmetini sonlandırdı.', CURDATE() - INTERVAL 310 DAY);
 
 -- ---------------------------------------------------------------------
 -- Örnek siparişler
@@ -36,12 +36,6 @@ INSERT INTO orders (id, customer_id, service_id, title, billing_cycle, price, se
 (7, 7, 5, NULL, 'monthly', 9000, 0, CURDATE() - INTERVAL 20 DAY, CURDATE() - INTERVAL 20 DAY, NULL, 'active', NULL),
 (8, 9, 1, NULL, 'monthly', 5000, 0, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 300 DAY, CURDATE() - INTERVAL 120 DAY, 'cancelled', NULL),
 (9, 1, 2, 'Web sitesi tasarımı', 'one_time', 18000, 0, CURDATE() - INTERVAL 120 DAY, CURDATE() - INTERVAL 120 DAY, NULL, 'completed', NULL);
-
--- İşlerin pay dağılımı: kişisel müşteride 2/3 sahibine 1/3 şirkete, ortak müşteride tamamı şirkete
-UPDATE orders o JOIN customers c ON c.id = o.customer_id
-SET o.share_arda    = IF(c.owner = 'arda', 66.6667, 0),
-    o.share_melih   = IF(c.owner = 'melih', 66.6667, 0),
-    o.share_company = IF(c.owner = 'ortak', 100, 33.3333);
 
 -- Kurulum ücretleri
 INSERT INTO dues (order_id, customer_id, period_no, due_date, amount)
@@ -113,11 +107,11 @@ INSERT INTO posts (customer_id, title, platforms, post_type, scheduled_date, sch
 (4, 'Öncesi / sonrası', 'instagram', 'reels', CURDATE() - INTERVAL 5 DAY, '18:00', NULL, 'published', NOW() - INTERVAL 5 DAY);
 
 -- Örnek gelir/giderler. Düzenli olanların (hosting yıllık, Claude aylık) kayıtlarını panel ilk açılışta oluşturur.
-INSERT INTO recurring_transactions (type, wallet, category, amount, cycle, start_date, description) VALUES
-('expense', 'company', 'Hosting', 3600, 'yearly', CURDATE() - INTERVAL 70 DAY, 'Sunucu yenileme'),
-('expense', 'arda', 'Claude / Yazılım', 3400, 'monthly', DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-01'), 'Claude aboneliği');
+INSERT INTO recurring_transactions (type, category, amount, cycle, start_date, description) VALUES
+('expense', 'Hosting', 3600, 'yearly', CURDATE() - INTERVAL 70 DAY, 'Sunucu yenileme'),
+('expense', 'Claude / Yazılım', 3400, 'monthly', DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-01'), 'Claude aboneliği');
 
-INSERT INTO transactions (type, wallet, category, amount, txn_date, description) VALUES
-('expense', 'company', 'Domain', 450, CURDATE() - INTERVAL 12 DAY, 'corventech.tr yenileme'),
-('expense', 'melih', 'Reklam', 1500, CURDATE() - INTERVAL 20 DAY, 'Instagram reklamı'),
-('income', 'company', 'Diğer gelir', 2000, CURDATE() - INTERVAL 8 DAY, 'Danışmanlık');
+INSERT INTO transactions (type, category, amount, txn_date, description) VALUES
+('expense', 'Domain', 450, CURDATE() - INTERVAL 12 DAY, 'corventech.tr yenileme'),
+('expense', 'Reklam', 1500, CURDATE() - INTERVAL 20 DAY, 'Instagram reklamı'),
+('income', 'Diğer gelir', 2000, CURDATE() - INTERVAL 8 DAY, 'Danışmanlık');

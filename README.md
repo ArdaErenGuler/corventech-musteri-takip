@@ -7,14 +7,14 @@ Corventech için müşteri, hizmet, ödeme ve yenileme takip paneli. Telefonda u
 ## Özellikler
 
 - **Dashboard:** aktif müşteri, bu ay tahsilat, gecikmiş ödemeler, yaklaşan ödemeler, açık görevler
-- **Müşteriler:** Arda / Melih / Ortak ayrımı, arama, durum/sektör/borçlu filtresi, tek dokunuşla arama ve WhatsApp; detay sayfasında hizmetler, ödeme planı, ödeme geçmişi, kalan borç, görevler ve görüşme notları
+- **Müşteriler:** arama, durum/sektör/borçlu filtresi, tek dokunuşla arama ve WhatsApp; detay sayfasında hizmetler, ödeme planı, ödeme geçmişi, kalan borç, görevler ve görüşme notları
 - **Sosyal medya takvimi:** aylık takvim; güne dokunup müşteri eklenir, paylaşınca işaretlenir; paylaşım günü gelince panelde şerit + bildirim
-- **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi İş eklenirken **"Para kime gidecek?"** seçilir (Arda'nın işi: 2/3 Arda + 1/3 Şirket, Melih'in işi, Ortak iş: tamamı Şirket veya özel oran); kişisel paylar 100 ₺'ye yuvarlanır, kalan şirkete yazılır.
+- **Siparişler:** müşteriye satılan hizmet (6 paket adından biri veya özel hizmet); fiyat her müşteri için **elle girilir**; **tek seferlik / aylık / yıllık** ödeme, ilk ödeme tarihi, kurulum ücreti, bitiş tarihi
 - **Ödemeler:** tahsilat kaydı; hangi dönem için alındığı ve kalan tutar otomatik gelir
 - **Yenilemeler:** gecikmiş, bugün, bu hafta ve sonraki 30 günün ödemeleri; WhatsApp hatırlatma mesajı; yıllık yenileme takvimi
 - **Görevler:** müşteriye bağlı görevler, sorumlu kişi, son tarih, öncelik
-- **Gelir / Gider:** hosting, domain, Claude gibi giderler ve diğer gelirler; hangi kasadan (Şirket / Arda / Melih) olduğu seçilir; tek sefer, her ay veya her yıl tekrar (düzenli kayıtlar kendiliğinden yazılır)
-- **Raporlar:** yıllık toplam ve aylık tahsilat grafiği; bir aya dokununca Arda, Melih ve Şirket kasaları; düzenli gelir, tahsilat oranı, hizmet bazında tahsilat, kişi bazında alacaklar
+- **Gelir / Gider:** hosting, domain, Claude gibi giderler ve diğer gelirler; tek sefer, her ay veya her yıl tekrar (düzenli kayıtlar kendiliğinden yazılır)
+- **Raporlar:** yıllık toplam ve aylık tahsilat grafiği; şirket kasası (tahsilat + diğer gelir − gider = net) ay ay ya da tüm yıl; düzenli gelir, tahsilat oranı, hizmet bazında tahsilat, alacaklar
 - **Yedekleme:** tek butonla ZIP (veritabanı .sql + Excel'de açılan tablolar); 7 gün yedek alınmazsa panelde ve menüde hatırlatma
 - **Ayarlar:** profil ve şifre, ortak kullanıcılar (yönetici / kullanıcı), WhatsApp mesaj şablonu, açık/koyu tema
 
@@ -64,6 +64,7 @@ Yeni dosyaları yüklemeniz yeterli. Panel ilk açıldığında `migrations/` kl
 - `002_gelir_gider.sql` — gelir/gider kaydı
 - `003_is_bazinda_pay.sql` — iş bazında pay seçimi, gelir/giderde kasa, düzenli (aylık/yıllık) gelir/giderler
 - `004_oturumlar.sql` — oturumlar veritabanında (30 gün; telefonda tekrar tekrar giriş istemez)
+- `005_ortak_kasa.sql` — müşteri sahibi, iş payı ve kasa seçimi kaldırıldı (her şey ortak; şirket kasası)
 
 Yeni bir güncelleme eklerken: `migrations/005_....sql` oluşturun, `includes/migrate.php` içindeki `DB_VERSION`'u artırın ve `database.sql`'deki `db_version` değerini güncelleyin.
 

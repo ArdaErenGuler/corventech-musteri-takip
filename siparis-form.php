@@ -49,9 +49,8 @@ if (is_post()) {
             if ($order['status'] !== 'active' && $status === 'active') {
                 $syncFrom = today();   // Devam ettirilen sipariş: aradaki dönemler borç yazılmaz
             }
-            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, setup_fee = ?, share_arda = ?, share_melih = ?, share_company = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [
+            q('UPDATE orders SET customer_id = ?, service_id = ?, title = ?, billing_cycle = ?, price = ?, setup_fee = ?, start_date = ?, first_due_date = ?, end_date = ?, sync_from = ?, status = ?, notes = ? WHERE id = ?', [
                 $customerId, $d['service_id'], $d['title'] ?: null, $d['billing_cycle'], $d['price'], $d['setup_fee'],
-                $d['shares'][0], $d['shares'][1], $d['shares'][2],
                 $d['start_date'], $d['first_due_date'], $d['end_date'], $syncFrom, $status, $d['notes'] ?: null, $id,
             ]);
             if ($customerId !== (int) $order['customer_id']) {
@@ -80,13 +79,9 @@ $o = $order ?? [
     'status'         => 'active',
     'setup_fee'      => 0,
 ];
-// "Para kime gidecek?" varsayılanı: kayıtlı iş → kendi payı; yeni iş → müşterinin sahibi
-$o['split'] = $order
-    ? order_share_preset($order)
-    : share_preset_for_owner(q_val('SELECT owner FROM customers WHERE id = ?', [$o['customer_id'] ?? 0]));
 $val = fn($k) => e(old($k, $o[$k] ?? ''));
 
-$customers = q_all("SELECT id, company_name, contact_name, owner FROM customers ORDER BY status = 'passive', COALESCE(NULLIF(company_name, ''), contact_name)");
+$customers = q_all("SELECT id, company_name, contact_name FROM customers ORDER BY status = 'passive', COALESCE(NULLIF(company_name, ''), contact_name)");
 $services = q_all('SELECT * FROM services WHERE is_active = 1 OR id = ? ORDER BY kind, sort_order, name', [$o['service_id'] ?? 0]);
 $dues = $order ? q_all(DUES_SELECT . ' WHERE d.order_id = ? ORDER BY d.period_no', [$id]) : [];
 $selectedCustomer = (int) old('customer_id', $o['customer_id'] ?? '');
@@ -99,10 +94,10 @@ layout_start($order ? 'Sipariş' : 'Hizmet ekle', 'orders', ['back' => $back, 'f
     <div class="form-grid">
         <div class="field span-2<?= isset($errors['customer_id']) ? ' has-error' : '' ?>">
             <label for="customer_id">Müşteri <span class="req">*</span></label>
-            <select id="customer_id" name="customer_id" required data-owner-source>
+            <select id="customer_id" name="customer_id" required>
                 <option value="">Müşteri seçin</option>
                 <?php foreach ($customers as $c): ?>
-                    <option value="<?= (int) $c['id'] ?>" data-owner="<?= e($c['owner']) ?>"<?= (int) $c['id'] === $selectedCustomer ? ' selected' : '' ?>><?= e(customer_display_name($c)) ?></option>
+                    <option value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $selectedCustomer ? ' selected' : '' ?>><?= e(customer_display_name($c)) ?></option>
                 <?php endforeach; ?>
             </select>
             <?= field_error($errors, 'customer_id') ?>

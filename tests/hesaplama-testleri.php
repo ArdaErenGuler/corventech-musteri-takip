@@ -59,15 +59,6 @@ check('+90 (555) 123 45 67', wa_number('+90 (555) 123 45 67'), '905551234567');
 check('5551234567', wa_number('5551234567'), '905551234567');
 check('boş', wa_number(''), '');
 
-echo "Pay etiketleri\n";
-check('2/3', share_fraction(66.6667), '2/3');
-check('1/3', share_fraction(33.3333), '1/3');
-check('tamamı', share_fraction(100), 'tamamı');
-check('%40', share_fraction(40), '%40');
-check('Arda işi metni', share_text(['share_arda' => 66.6667, 'share_melih' => 0, 'share_company' => 33.3333]), 'Arda 2/3 · Şirket 1/3');
-check('hazır seçenek tanıma', order_share_preset(['share_arda' => 0, 'share_melih' => 66.6667, 'share_company' => 33.3333]), 'melih');
-check('özel oran tanıma', order_share_preset(['share_arda' => 50, 'share_melih' => 0, 'share_company' => 50]), 'custom');
-
 echo "Güvenli geri dönüş adresi\n";
 check('panel sayfası', safe_return('/panel/musteri.php?id=4#odemeler', 'x.php'), 'musteri.php?id=4#odemeler');
 check('dış site reddedilir', safe_return('https://kotu.site/x', 'dashboard.php'), 'dashboard.php');

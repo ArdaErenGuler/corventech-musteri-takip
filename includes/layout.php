@@ -205,11 +205,6 @@ function customer_status_badge(string $status): string
     return badge(CUSTOMER_STATUS_LABELS[$status] ?? $status, $tone);
 }
 
-function owner_badge(?string $owner): string
-{
-    return isset(OWNER_LABELS[$owner]) ? badge(OWNER_LABELS[$owner], 'neutral', 'user') : '';
-}
-
 function order_status_badge(string $status): string
 {
     $tone = ['active' => 'good', 'paused' => 'warning', 'cancelled' => 'neutral', 'completed' => 'accent'][$status] ?? 'neutral';

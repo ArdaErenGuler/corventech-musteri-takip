@@ -34,14 +34,12 @@ if (is_post()) {
     }
 
     $type = input('type') === 'income' ? 'income' : 'expense';
-    $wallet = input('wallet');
     $category = input('category');
     $amount = input_money('amount');
     $date = input_date('txn_date');
     $cycle = input('cycle');
     $allowed = $type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-    if (!isset(WALLETS[$wallet])) $errors['wallet'] = 'Kasa seçin.';
     if (!in_array($category, $allowed, true)) $errors['category'] = 'Kategori seçin.';
     if ($amount === null || $amount <= 0) $errors['amount'] = 'Tutarı yazın.';
     if (!$date) $errors['txn_date'] = 'Tarih seçin.';
@@ -50,12 +48,12 @@ if (is_post()) {
     if (!$errors) {
         $label = ($type === 'income' ? 'Gelir' : 'Gider');
         if ($cycle === 'once') {
-            q('INSERT INTO transactions (type, wallet, category, amount, txn_date, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$type, $wallet, $category, $amount, $date, input('description') ?: null, $user['id']]);
+            q('INSERT INTO transactions (type, category, amount, txn_date, description, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+                [$type, $category, $amount, $date, input('description') ?: null, $user['id']]);
             flash('success', "$label eklendi: " . money($amount));
         } else {
-            q('INSERT INTO recurring_transactions (type, wallet, category, amount, cycle, start_date, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [$type, $wallet, $category, $amount, $cycle, $date, input('description') ?: null, $user['id']]);
+            q('INSERT INTO recurring_transactions (type, category, amount, cycle, start_date, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$type, $category, $amount, $cycle, $date, input('description') ?: null, $user['id']]);
             sync_recurring_transactions(true);
             flash('success', "$label " . mb_strtolower(TXN_CYCLES[$cycle]) . ' tekrarlanacak: ' . money($amount));
         }
@@ -85,15 +83,6 @@ layout_start('Gelir / Gider', 'finance', ['fab' => false]);
         <label><input type="radio" name="type" value="income" data-txn-type<?= $type === 'income' ? ' checked' : '' ?>><span>Gelir</span></label>
     </div>
     <div class="form-grid">
-        <fieldset class="field span-2<?= isset($errors['wallet']) ? ' has-error' : '' ?>">
-            <legend class="label" data-wallet-label><?= $type === 'income' ? 'Hangi kasaya girdi?' : 'Hangi kasadan ödendi?' ?></legend>
-            <div class="segmented">
-                <?php foreach (['company' => 'Şirket', 'arda' => 'Arda', 'melih' => 'Melih'] as $k => $label): ?>
-                    <label><input type="radio" name="wallet" value="<?= $k ?>"<?= old('wallet', 'company') === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
-                <?php endforeach; ?>
-            </div>
-            <?= field_error($errors, 'wallet') ?>
-        </fieldset>
         <div class="field<?= isset($errors['category']) ? ' has-error' : '' ?>">
             <label for="category">Kategori</label>
             <select id="category" name="category">
@@ -154,7 +143,6 @@ layout_start('Gelir / Gider', 'finance', ['fab' => false]);
                     <span class="item-title"><?= e($r['category']) ?></span>
                     <div class="item-sub">
                         <span><?= date_tr($r['txn_date']) ?></span>
-                        <?= badge(WALLETS[$r['wallet']] . ($in ? ' kasasına' : ' kasasından'), 'neutral', 'briefcase') ?>
                         <?php if ($r['cycle']): ?><?= badge(TXN_CYCLES[$r['cycle']], 'accent', 'refresh') ?><?php endif; ?>
                         <?php if ($r['description']): ?><span><?= e($r['description']) ?></span><?php endif; ?>
                     </div>
@@ -184,7 +172,6 @@ layout_start('Gelir / Gider', 'finance', ['fab' => false]);
                     <span class="item-title"><?= e($r['category']) ?><?= $r['description'] ? ' · ' . e($r['description']) : '' ?></span>
                     <div class="item-sub">
                         <?= badge(TXN_CYCLES[$r['cycle']], 'accent') ?>
-                        <span><?= e(WALLETS[$r['wallet']]) ?> kasası</span>
                         <?php if ($r['is_active']): ?><span><?= icon('calendar') ?>Sonraki <?= date_tr(recurring_next_date($r)) ?></span>
                         <?php else: ?><span>Durduruldu</span><?php endif; ?>
                     </div>

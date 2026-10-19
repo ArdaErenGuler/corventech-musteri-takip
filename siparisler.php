@@ -87,7 +87,6 @@ layout_start('Siparişler', 'orders', ['fab' => ['href' => 'siparis-form.php', '
                     <div class="item-sub"><span><?= e(order_name($o)) ?></span></div>
                     <div class="item-sub">
                         <span><?= e(CYCLE_LABELS[$o['billing_cycle']]) ?></span>
-                            <span><?= icon('wallet') ?><?= e(share_text($o)) ?></span>
                         <span><?= icon('calendar') ?><?= date_tr($o['start_date']) ?></span>
                         <?php if ($o['next_due']): ?>
                             <span class="<?= $o['next_due'] < today() ? 'text-critical' : '' ?>">Sonraki ödeme <?= date_tr($o['next_due']) ?></span>

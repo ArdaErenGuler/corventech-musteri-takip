@@ -31,7 +31,6 @@ if (is_post()) {
         'sector'        => input('sector'),
         'city'          => input('city'),
         'status'        => input('status'),
-        'owner'         => input('owner'),
         'notes'         => input('notes'),
         'registered_at' => input_date('registered_at'),
     ];
@@ -47,11 +46,7 @@ if (is_post()) {
     }
     if (!isset(CUSTOMER_STATUS_LABELS[$data['status']])) {
         $errors['status'] = 'Durum seçin.';
-    }
-    if (!isset(OWNER_LABELS[$data['owner']])) {
-        $errors['owner'] = 'Müşterinin kime ait olduğunu seçin.';
-    }
-    if (!$data['registered_at']) {
+    }    if (!$data['registered_at']) {
         $errors['registered_at'] = 'Geçerli bir tarih seçin.';
     }
 
@@ -67,13 +62,13 @@ if (is_post()) {
         $nullable = fn($v) => $v === '' ? null : $v;
         $values = [
             $nullable($data['company_name']), $data['contact_name'], $nullable($data['phone']), $nullable($data['email']),
-            $nullable($data['sector']), $nullable($data['city']), $data['status'], $data['owner'], $nullable($data['notes']), $data['registered_at'],
+            $nullable($data['sector']), $nullable($data['city']), $data['status'], $nullable($data['notes']), $data['registered_at'],
         ];
         if ($customer) {
-            q('UPDATE customers SET company_name = ?, contact_name = ?, phone = ?, email = ?, sector = ?, city = ?, status = ?, owner = ?, notes = ?, registered_at = ? WHERE id = ?', [...$values, $id]);
+            q('UPDATE customers SET company_name = ?, contact_name = ?, phone = ?, email = ?, sector = ?, city = ?, status = ?, notes = ?, registered_at = ? WHERE id = ?', [...$values, $id]);
             flash('success', 'Müşteri bilgileri güncellendi.');
         } else {
-            q('INSERT INTO customers (company_name, contact_name, phone, email, sector, city, status, owner, notes, registered_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
+            q('INSERT INTO customers (company_name, contact_name, phone, email, sector, city, status, notes, registered_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$values, $user['id']]);
             $id = (int) db()->lastInsertId();
             if ($order) {
                 create_order(['customer_id' => $id, 'notes' => null] + $order, (int) $user['id']);
@@ -86,10 +81,8 @@ if (is_post()) {
     }
 }
 
-// Yeni müşteride sahip, giriş yapan kişinin adına göre seçili gelir (Arda → Arda, Melih → Melih)
-$myOwner = mb_strtolower(explode(' ', trim($user['name']))[0]);
-$c = $customer ?? ['status' => 'active', 'owner' => isset(OWNER_LABELS[$myOwner]) && $myOwner !== 'ortak' ? $myOwner : 'ortak', 'registered_at' => today()];
-$o = ['billing_cycle' => 'monthly', 'start_date' => today(), 'first_due_date' => today(), 'split' => share_preset_for_owner($c['owner'])];
+$c = $customer ?? ['status' => 'active', 'registered_at' => today()];
+$o = ['billing_cycle' => 'monthly', 'start_date' => today(), 'first_due_date' => today()];
 $services = q_all('SELECT id, name FROM services WHERE is_active = 1 ORDER BY kind, sort_order, name');
 $val = fn($k) => e(old($k, $c[$k] ?? ''));
 $sectors = q("SELECT DISTINCT sector FROM customers WHERE sector IS NOT NULL AND sector <> '' ORDER BY sector")->fetchAll(PDO::FETCH_COLUMN);
@@ -134,15 +127,6 @@ layout_start($customer ? 'Müşteriyi düzenle' : 'Yeni müşteri', 'customers',
             <input id="city" name="city" list="city-list" value="<?= $val('city') ?>">
             <datalist id="city-list"><?php foreach ($cities as $s): ?><option value="<?= e($s) ?>"><?php endforeach; ?></datalist>
         </div>
-        <fieldset class="field span-2<?= isset($errors['owner']) ? ' has-error' : '' ?>">
-            <legend class="label">Kimin müşterisi?</legend>
-            <div class="segmented">
-                <?php foreach (OWNER_LABELS as $k => $label): ?>
-                    <label><input type="radio" name="owner" value="<?= $k ?>"<?= old('owner', $c['owner']) === $k ? ' checked' : '' ?>><span><?= e($label) ?></span></label>
-                <?php endforeach; ?>
-            </div>
-            <?= field_error($errors, 'owner') ?>
-        </fieldset>
         <fieldset class="field<?= isset($errors['status']) ? ' has-error' : '' ?>">
             <legend class="label">Durum</legend>
             <div class="segmented">
