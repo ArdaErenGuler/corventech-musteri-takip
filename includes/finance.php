@@ -44,7 +44,7 @@ function recurring_next_date(array $r): string
 
 /**
  * Tarih aralığında şirketin durumu.
- * Dönen: ['collected' => tahsilat, 'income' => diğer gelir, 'expense' => gider, 'net' => net]
+ * Dönen: ['collected' => müşteri ödemeleri, 'income' => diğer gelir, 'revenue' => toplam gelir, 'expense' => gider, 'net' => net]
  */
 function company_breakdown(string $from, string $to): array
 {
@@ -60,6 +60,7 @@ function company_breakdown(string $from, string $to): array
     return [
         'collected' => round($collected, 2),
         'income'    => round($income, 2),
+        'revenue'   => round($collected + $income, 2),   // toplam gelir = müşteri ödemeleri + diğer gelir
         'expense'   => round($expense, 2),
         'net'       => round($collected + $income - $expense, 2),
     ];

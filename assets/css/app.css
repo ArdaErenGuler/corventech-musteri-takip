@@ -464,6 +464,16 @@ ul.tight li, ol.tight li { margin-bottom: 4px; }
 .chart-col.is-past .bar { background: var(--chart-bar-muted); }
 .chart-col .val { position: absolute; font-size: 0.72rem; font-weight: 700; color: var(--muted); white-space: nowrap; margin-bottom: 4px; }
 .chart-col:hover .bar, .chart-col:focus-visible .bar { filter: brightness(1.12); }
+.stats > .stat:nth-child(odd):last-child { grid-column: 1 / -1; }
+.add-expense { margin-bottom: 14px; }
+.add-expense > summary { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
+.add-expense > summary::-webkit-details-marker { display: none; }
+.add-expense[open] > summary { margin-bottom: 14px; }
+.fin-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.fin-sum > div { display: flex; flex-direction: column; min-width: 0; }
+.fin-sum small { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.fin-sum b { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--heading); }
+@media (min-width: 720px) { .fin-sum b { font-size: 1.7rem; } }
 a.chart-col { text-decoration: none; cursor: pointer; }
 .chart-col.is-dim .bar { background: var(--chart-bar-muted); }
 .chart-labels span.is-selected { color: var(--heading); font-weight: 800; }

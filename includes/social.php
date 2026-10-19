@@ -1,6 +1,6 @@
 <?php
 /**
- * Sosyal medya takvimi: güne müşteri eklenir, o gün gelince hatırlatılır.
+ * Sosyal medya takvimi: güne hesap adı yazılır, o gün gelince hatırlatılır.
  * (posts tablosundaki platform/tür/saat alanları şimdilik kullanılmıyor.)
  */
 

@@ -7,14 +7,15 @@ if (is_post()) {
     $action = input('action');
 
     if ($action === 'add') {
-        $customerId = input_int('customer_id');
+        // Hesap adı elle yazılır (örn. "Lavanta Kafe" ya da "lavantakafe"); müşteri seçimi gerekmez
+        $account = mb_substr(input('account'), 0, 150);
         $date = input_date('date');
-        if (!$customerId || !$date || !q_val('SELECT id FROM customers WHERE id = ?', [$customerId])) {
-            flash('error', 'Müşteri seçin.');
-        } elseif (q_val('SELECT id FROM posts WHERE customer_id = ? AND scheduled_date = ?', [$customerId, $date])) {
-            flash('error', 'Bu müşteri o güne zaten ekli.');
+        if ($account === '' || !$date) {
+            flash('error', 'Hesap adını yazın.');
+        } elseif (q_val('SELECT id FROM posts WHERE title = ? AND scheduled_date = ?', [$account, $date])) {
+            flash('error', 'Bu hesap o güne zaten ekli.');
         } else {
-            q("INSERT INTO posts (customer_id, title, scheduled_date, created_by) VALUES (?, 'Paylaşım', ?, ?)", [$customerId, $date, $user['id']]);
+            q('INSERT INTO posts (customer_id, title, scheduled_date, created_by) VALUES (NULL, ?, ?, ?)', [$account, $date, $user['id']]);
             flash('success', 'Takvime eklendi.');
         }
         redirect('takvim.php?ay=' . substr((string) $date, 0, 7) . '&gun=' . $date);
@@ -47,7 +48,8 @@ foreach (q_all(POSTS_SELECT . ' WHERE p.scheduled_date BETWEEN ? AND ? ORDER BY 
     $byDay[$p['scheduled_date']][] = $p;
 }
 
-$customers = q_all("SELECT id, company_name, contact_name FROM customers WHERE status <> 'passive' ORDER BY COALESCE(NULLIF(company_name, ''), contact_name)");
+// Daha önce yazılan hesap adları (yazarken öneri olarak çıkar)
+$accounts = q("SELECT DISTINCT title FROM posts WHERE customer_id IS NULL AND title <> '' ORDER BY title LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
 $prev = $month->modify('-1 month')->format('Y-m');
 $next = $month->modify('+1 month')->format('Y-m');
 
@@ -79,7 +81,7 @@ layout_start('Sosyal Medya Takvimi', 'calendar', ['fab' => false]);
                 if ((int) $d->format('N') >= 6) $cls[] = 'is-weekend';
                 if (array_filter($posts, fn($p) => $p['status'] !== 'published' && $key < today())) $cls[] = 'has-late'; ?>
                 <a class="<?= implode(' ', $cls) ?>" href="takvim.php?ay=<?= $d->format('Y-m') ?>&gun=<?= $key ?>" data-day="<?= $key ?>"
-                   aria-label="<?= e(date_long_tr($key) . ($posts ? ', ' . count($posts) . ' müşteri' : '')) ?>"<?= $key === $selected ? ' aria-current="date"' : '' ?>>
+                   aria-label="<?= e(date_long_tr($key) . ($posts ? ', ' . count($posts) . ' hesap' : '')) ?>"<?= $key === $selected ? ' aria-current="date"' : '' ?>>
                     <span class="cal-num"><?= (int) $d->format('j') ?></span>
                     <?php if ($posts): ?>
                         <span class="cal-dots" aria-hidden="true">
@@ -103,7 +105,7 @@ layout_start('Sosyal Medya Takvimi', 'calendar', ['fab' => false]);
             $posts = $byDay[$key] ?? []; ?>
             <section class="cal-agenda card" data-agenda="<?= $key ?>"<?= $key === $selected ? '' : ' hidden' ?>>
                 <h2><?= e(date_long_tr($key)) ?></h2>
-                <p class="muted small" style="margin:2px 0 12px"><?= $key === today() ? 'Bugün · ' : '' ?><?= $posts ? count($posts) . ' müşteriye paylaşım' : 'Paylaşım yok' ?></p>
+                <p class="muted small" style="margin:2px 0 12px"><?= $key === today() ? 'Bugün · ' : '' ?><?= $posts ? count($posts) . ' hesap' : 'Paylaşım yok' ?></p>
 
                 <?php if ($posts): ?>
                     <div class="list mb"><?php foreach ($posts as $p) echo post_item($p); ?></div>
@@ -113,16 +115,12 @@ layout_start('Sosyal Medya Takvimi', 'calendar', ['fab' => false]);
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="add">
                     <input type="hidden" name="date" value="<?= $key ?>">
-                    <select name="customer_id" required aria-label="Müşteri seçin">
-                        <option value="">Müşteri seçin…</option>
-                        <?php foreach ($customers as $c): ?>
-                            <option value="<?= (int) $c['id'] ?>"><?= e(customer_display_name($c)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input type="text" name="account" list="account-list" required maxlength="150" placeholder="Hesap adı yazın…" aria-label="Sosyal medya hesap adı" autocomplete="off">
                     <button class="btn" type="submit"><?= icon('plus') ?>Ekle</button>
                 </form>
             </section>
         <?php endfor; ?>
     </div>
 </div>
+<datalist id="account-list"><?php foreach ($accounts as $a): ?><option value="<?= e($a) ?>"><?php endforeach; ?></datalist>
 <?php layout_end();
